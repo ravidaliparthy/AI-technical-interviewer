@@ -38,6 +38,25 @@ CANONICAL_DSA_CATALOG: Dict[str, Dict[str, Any]] = {
         ]
     },
 
+    # 2b. Find Pair with Target Sum / Two Sum (Boolean)
+    "find pair with target sum": {
+        "title": "Find Pair with Target Sum",
+        "fn": "findPairWithTargetSum",
+        "aliases": [
+            "find pair with target sum", "pair with target sum", "has pair with sum",
+            "has pair with target sum", "target sum pair", "two sum boolean",
+            "find pair", "two sum - find pair", "find_pair_with_target_sum", "findpairwithtargetsum"
+        ],
+        "params": [("nums", "List[int]"), ("target", "int")],
+        "return_type": "bool",
+        "test_call": "findPairWithTargetSum([1, 2, 3, 4, 6], 8)",
+        "tests": [
+            {"args": ([1, 2, 3, 4, 6], 8), "expected": True, "desc": "nums = [1, 2, 3, 4, 6], target = 8"},
+            {"args": ([2, 5, 8, 11], 20), "expected": False, "desc": "nums = [2, 5, 8, 11], target = 20"},
+            {"args": ([-3, 0, 1, 4, 5], 1), "expected": True, "desc": "nums = [-3, 0, 1, 4, 5], target = 1"}
+        ]
+    },
+
     # 3. Valid Anagram
     "valid anagram": {
         "title": "Valid Anagram",
@@ -763,15 +782,35 @@ def find_canonical_problem(query: str, fn_name: str = "") -> Optional[Dict[str, 
                 if clean_fn == alias.replace(" ", "").replace("_", "").lower():
                     return p
 
-    # 2. Match by exact title key or aliases
+    # 2. Extract title if query contains one (e.g. '### Problem: Find Pair with Target Sum')
+    title_match = re.search(r'###\s*Problem:\s*([^\n\r]+)', query, re.IGNORECASE)
+    if not title_match:
+        title_match = re.search(r'##\s*Problem:\s*([^\n\r]+)', query, re.IGNORECASE)
+    if not title_match:
+        title_match = re.search(r'\*\*Problem(?:\s*\d+)?(?:\s*-\s*|\s*:\s*)([^\*\n\r]+)\*\*', query, re.IGNORECASE)
+
+    if title_match:
+        extracted_t = title_match.group(1).strip().lower()
+        extracted_t = re.sub(r'[\*`_]', '', extracted_t).strip()
+        for key, p in CANONICAL_DSA_CATALOG.items():
+            if key == extracted_t or p["title"].lower() == extracted_t:
+                return p
+            for alias in p.get("aliases", []):
+                if alias == extracted_t or alias in extracted_t:
+                    return p
+
+    # 3. Match by exact title key or aliases with word-boundary safety
     for key, p in CANONICAL_DSA_CATALOG.items():
         if key in clean_q or p["title"].lower() in clean_q:
             return p
         for alias in p.get("aliases", []):
-            if alias in clean_q:
+            if len(alias) <= 4 or " " not in alias:
+                if re.search(rf'\b{re.escape(alias)}\b', clean_q):
+                    return p
+            elif alias in clean_q:
                 return p
 
-    # 3. Match by function name substring in query
+    # 4. Match by function name substring in query
     if clean_fn:
         for key, p in CANONICAL_DSA_CATALOG.items():
             if clean_fn in key or key in clean_fn:

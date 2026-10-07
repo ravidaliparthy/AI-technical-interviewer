@@ -2242,13 +2242,23 @@ async def realtime_helper_endpoint(req: RealtimeHelperRequest):
 @app.post("/api/interview/analyze-code", response_model=CodeAnalysisResponse)
 async def analyze_code(req: CodeAnalysisRequest):
     """Analyzes candidate DSA code solution for loopholes, edge-case vulnerabilities, Big-O bounds, and company standards."""
+    tc_to_use = req.test_cases
+    if not tc_to_use and req.problem:
+        tc_to_use = extract_test_cases_from_text(req.problem)
+        if not tc_to_use:
+            try:
+                from canonical_dsa import get_canonical_tests
+                tc_to_use = get_canonical_tests(req.problem)
+            except Exception:
+                pass
+
     res = analyze_code_loopholes(
         code=req.code,
         problem=req.problem,
         language=req.language,
         company=req.company,
         difficulty=req.difficulty,
-        test_cases=req.test_cases
+        test_cases=tc_to_use
     )
     return CodeAnalysisResponse(
         loopholes=res["loopholes"],
@@ -2267,12 +2277,22 @@ async def analyze_code(req: CodeAnalysisRequest):
 @app.post("/api/interview/run-code", response_model=RunCodeResponse)
 async def run_code(req: RunCodeRequest):
     """Executes candidate's code in Python, JavaScript/Node.js, or statically checks compiled languages, returning real output, runtime ms, and test feedback."""
+    tc_to_use = req.test_cases
+    if not tc_to_use and req.problem:
+        tc_to_use = extract_test_cases_from_text(req.problem)
+        if not tc_to_use:
+            try:
+                from canonical_dsa import get_canonical_tests
+                tc_to_use = get_canonical_tests(req.problem)
+            except Exception:
+                pass
+
     res = execute_candidate_code(
         code=req.code,
         language=req.language,
         problem_title=req.problem or "",
         custom_input=req.custom_input,
-        test_cases=req.test_cases
+        test_cases=tc_to_use
     )
     return RunCodeResponse(
         status=res["status"],

@@ -34,6 +34,18 @@ CANONICAL_SIGNATURES: Dict[str, Dict[str, Any]] = {
         "return_type": "List[int]",
         "test_call": "twoSum([2, 7, 11, 15], 9)"
     },
+    "find pair with target sum": {
+        "fn": "findPairWithTargetSum",
+        "params": [("nums", "List[int]"), ("target", "int")],
+        "return_type": "bool",
+        "test_call": "findPairWithTargetSum([1, 2, 3, 4, 6], 8)"
+    },
+    "pair with target sum": {
+        "fn": "findPairWithTargetSum",
+        "params": [("nums", "List[int]"), ("target", "int")],
+        "return_type": "bool",
+        "test_call": "findPairWithTargetSum([1, 2, 3, 4, 6], 8)"
+    },
     "maximum subarray": {
         "fn": "maxSubArray",
         "params": [("nums", "List[int]")],
@@ -449,7 +461,21 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
     """
     q_lower = question_text.lower()
 
-    # 1. Check canonical catalog first
+    raw_title = extract_problem_title(question_text)
+
+    # 1. Check title against canonical catalog first
+    if raw_title and raw_title != "Algorithmic Challenge" and find_canonical_problem:
+        c_prob = find_canonical_problem(raw_title)
+        if c_prob:
+            return (
+                c_prob["fn"],
+                c_prob["params"],
+                c_prob.get("return_type", "Any"),
+                c_prob.get("needs_tree", False),
+                c_prob.get("needs_list", False)
+            )
+
+    # 2. Check full question against canonical catalog
     if find_canonical_problem:
         c_prob = find_canonical_problem(question_text)
         if c_prob:
@@ -461,8 +487,20 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
                 c_prob.get("needs_list", False)
             )
 
+    if raw_title and raw_title != "Algorithmic Challenge":
+        title_lower = raw_title.lower().strip()
+        for key, data in CANONICAL_SIGNATURES.items():
+            if key == title_lower or key in title_lower:
+                return (
+                    data["fn"],
+                    data["params"],
+                    data.get("return_type", "Any"),
+                    data.get("needs_tree", False),
+                    data.get("needs_list", False)
+                )
+
     for key, data in CANONICAL_SIGNATURES.items():
-        if key in q_lower:
+        if re.search(rf'\b{re.escape(key)}\b', q_lower):
             return (
                 data["fn"],
                 data["params"],

@@ -249,6 +249,14 @@ def _run_python_code(
         extracted_tests = extract_test_cases_from_text(problem_title)
         if not extracted_tests and problem_title and get_canonical_tests:
             extracted_tests = get_canonical_tests(problem_title)
+        if not extracted_tests and get_canonical_tests:
+            # Also try matching canonical tests from candidate's defined function names
+            fn_matches = re.findall(r'(?:def|function)\s+([a-zA-Z_]\w*)\s*\(', code)
+            for fn_m in fn_matches:
+                canonical = get_canonical_tests(problem_title, fn_name=fn_m)
+                if canonical:
+                    extracted_tests = canonical
+                    break
 
     if custom_input and custom_input.strip():
         try:
@@ -316,6 +324,12 @@ def __run_harness():
             {{"args": (2, [[1, 0]]), "expected": True, "desc": "numCourses=2, prerequisites=[[1,0]]"}},
             {{"args": (2, [[1, 0], [0, 1]]), "expected": False, "desc": "numCourses=2, prerequisites=[[1,0],[0,1]]"}},
             {{"args": (4, [[1, 0], [2, 1], [3, 2]]), "expected": True, "desc": "numCourses=4, prerequisites=[[1,0],[2,1],[3,2]]"}}
+        ]
+    elif "find pair" in fname_lower or "pair" in fname_lower or "find pair" in p_lower or "pair with target sum" in p_lower or "target sum pair" in p_lower:
+        tests = [
+            {{"args": ([1, 2, 3, 4, 6], 8), "expected": True, "desc": "nums=[1, 2, 3, 4, 6], target=8"}},
+            {{"args": ([2, 5, 8, 11], 20), "expected": False, "desc": "nums=[2, 5, 8, 11], target=20"}},
+            {{"args": ([-3, 0, 1, 4, 5], 1), "expected": True, "desc": "nums=[-3, 0, 1, 4, 5], target=1"}}
         ]
     elif "twosum" in fname_lower or "two sum" in p_lower:
         tests = [
@@ -503,9 +517,19 @@ def __run_harness():
                     {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": f"{{p1}}=3, {{p2}}=[[0,2,1]]"}}
                 ]
             elif not p1_is_int and p2_is_int:
-                tests = [
-                    {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": f"{{p1}}=[2,7,11,15], {{p2}}=9", "is_indices": True}}
-                ]
+                code_lower = {repr(code.lower())}
+                is_bool_code = any(k in code_lower for k in ["return true", "return false", "bool", "seen = set", "set()"])
+                is_bool_prob = any(k in p_lower for k in ["true", "false", "pair", "exist", "find pair", "boolean"])
+                if is_bool_code or is_bool_prob or "pair" in fname_lower or "has" in fname_lower or "is" in fname_lower:
+                    tests = [
+                        {{"args": ([1, 2, 3, 4, 6], 8), "expected": True, "desc": f"{{p1}}=[1, 2, 3, 4, 6], {{p2}}=8"}},
+                        {{"args": ([2, 5, 8, 11], 20), "expected": False, "desc": f"{{p1}}=[2, 5, 8, 11], {{p2}}=20"}},
+                        {{"args": ([-3, 0, 1, 4, 5], 1), "expected": True, "desc": f"{{p1}}=[-3, 0, 1, 4, 5], {{p2}}=1"}}
+                    ]
+                else:
+                    tests = [
+                        {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": f"{{p1}}=[2,7,11,15], {{p2}}=9", "is_indices": True}}
+                    ]
             elif p1_is_int and p2_is_int:
                 tests = [
                     {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": f"{{p1}}=4, {{p2}}=2", "is_nested_set": True}}
@@ -779,6 +803,12 @@ function __run_js_harness() {{
             {{ args: [2, [[1, 0]]], expected: true, desc: "numCourses=2, prerequisites=[[1,0]]" }},
             {{ args: [2, [[1, 0], [0, 1]]], expected: false, desc: "numCourses=2, prerequisites=[[1,0],[0,1]]" }},
             {{ args: [4, [[1, 0], [2, 1], [3, 2]]], expected: true, desc: "numCourses=4, prerequisites=[[1,0],[2,1],[3,2]]" }}
+        ];
+    }} else if (fname.includes("findpair") || fname.includes("pair") || p.includes("find pair") || p.includes("pair with target sum") || p.includes("target sum pair")) {{
+        tests = [
+            {{ args: [[1, 2, 3, 4, 6], 8], expected: true, desc: "nums=[1, 2, 3, 4, 6], target=8" }},
+            {{ args: [[2, 5, 8, 11], 20], expected: false, desc: "nums=[2, 5, 8, 11], target=20" }},
+            {{ args: [[-3, 0, 1, 4, 5], 1], expected: true, desc: "nums=[-3, 0, 1, 4, 5], target=1" }}
         ];
     }} else if (fname.includes("twosum") || p.includes("two sum")) {{
         tests = [

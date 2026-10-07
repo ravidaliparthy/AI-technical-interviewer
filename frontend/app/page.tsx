@@ -530,10 +530,10 @@ export default function Home() {
       setShowCodeEditor(isCoding);
 
       if (isCoding) {
-        if (data.test_cases && data.test_cases.length > 0) {
-          setActiveTestCases(data.test_cases);
-        }
-        setActiveProblemText(data.problem_text || data.message);
+        setActiveTestCases(data.test_cases && data.test_cases.length > 0 ? data.test_cases : []);
+        setActiveProblemText(data.problem_text || data.message || "");
+        setCodeRunResult(null);
+        setCodeAnalysisResult(null);
       }
 
       // Populate dynamic templates and parameters tailored to the specific question
@@ -861,10 +861,10 @@ export default function Home() {
         setShowCodeEditor(isCodingFollowup);
       }
       if (isCodingFollowup) {
-        if (data.test_cases && data.test_cases.length > 0) {
-          setActiveTestCases(data.test_cases);
-        }
-        setActiveProblemText(data.problem_text || data.message);
+        setActiveTestCases(data.test_cases && data.test_cases.length > 0 ? data.test_cases : []);
+        setActiveProblemText(data.problem_text || data.message || "");
+        setCodeRunResult(null);
+        setCodeAnalysisResult(null);
       }
       if (data.starter_snippets) {
         setStarterSnippets(data.starter_snippets);
