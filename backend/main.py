@@ -211,6 +211,7 @@ class CodeAnalysisRequest(BaseModel):
     difficulty: Literal["Easy", "Medium", "Hard"] = "Medium"
     provider: Optional[Literal["auto", "groq", "builtin"]] = "auto"
     api_key: Optional[str] = None
+    test_cases: Optional[List[Dict[str, Any]]] = None
 
 class CodeAnalysisResponse(BaseModel):
     loopholes: List[str]
@@ -2246,7 +2247,8 @@ async def analyze_code(req: CodeAnalysisRequest):
         problem=req.problem,
         language=req.language,
         company=req.company,
-        difficulty=req.difficulty
+        difficulty=req.difficulty,
+        test_cases=req.test_cases
     )
     return CodeAnalysisResponse(
         loopholes=res["loopholes"],

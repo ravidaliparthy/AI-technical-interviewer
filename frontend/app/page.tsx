@@ -645,12 +645,12 @@ export default function Home() {
     setIsAnalyzingCode(true);
 
     let effectiveProblem = activeProblemText;
-    if (!effectiveProblem) {
+    if (!effectiveProblem || (!effectiveProblem.includes("Input:") && !effectiveProblem.includes("Test Cases"))) {
       const probMsg = conversation
         .slice()
         .reverse()
         .find((m) => m.role === "interviewer" && (m.content.includes("Input:") || m.content.includes("Problem:")));
-      effectiveProblem = probMsg ? probMsg.content : (currentProblemTitle || topic);
+      effectiveProblem = probMsg ? probMsg.content : (effectiveProblem || currentProblemTitle || topic);
     }
 
     try {
@@ -665,6 +665,7 @@ export default function Home() {
           difficulty,
           provider,
           api_key: apiKey || null,
+          test_cases: activeTestCases && activeTestCases.length > 0 ? activeTestCases : undefined,
         }),
       });
 
