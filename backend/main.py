@@ -1545,10 +1545,16 @@ DO NOT ask generic textbook questions. Cross-examine the candidate directly on w
     if is_dsa:
         domain_rules = """
 SPECIAL DSA CODING REQUIREMENTS:
-1. Always format algorithmic problems with:
-   - Clear Problem Description
-   - Test Cases (with Input, Output, and Explanation)
+1. Every algorithmic problem MUST include ALL 3 sections:
+   - Problem Description
+   - Test Cases (MANDATORY: You MUST provide 2 or 3 numbered test cases formatted with:
+     1. Input: <param> = <val>, ...
+        Output: <expected>
+        Explanation: ...
+     2. Input: ...
+        Output: ...)
    - Constraints
+   DO NOT skip the Test Cases section.
 2. ALWAYS evaluate whether the candidate declared both Time Complexity ($O(...)$) and Auxiliary Space Complexity ($O(...)$).
 3. If they omitted complexity analysis or provided an unoptimized solution, probe for it directly without revealing the answer.
 """

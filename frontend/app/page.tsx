@@ -39,10 +39,13 @@ interface QuestionHint {
 }
 
 interface TestCaseResult {
-  test_case: number;
+  test_case?: number;
+  case?: string;
   input: string;
   expected: string;
-  status: "Passed" | "Edge Case Risk" | "Failed";
+  actual?: string;
+  status?: string;
+  passed?: boolean;
 }
 
 interface CodeAnalysisResult {
@@ -2720,18 +2723,18 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                                 <span>🧪</span> Test Case Validation Matrix
                               </h4>
                               <div className="space-y-1.5 font-mono text-[11px]">
-                                {codeAnalysisResult.test_case_results.map((tc) => (
-                                  <div key={tc.test_case} className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                                {codeAnalysisResult.test_case_results.map((tc, idx) => (
+                                  <div key={tc.test_case ?? idx} className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
                                     <div>
-                                      <span className="text-slate-400">Case #{tc.test_case}: </span>
+                                      <span className="text-slate-400">Case #{tc.test_case ?? (idx + 1)}: </span>
                                       <span className="text-slate-200">{tc.input} ➔ Expected: {tc.expected}</span>
                                     </div>
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                      tc.status === "Passed"
+                                      (tc.status === "Passed" || tc.passed)
                                         ? "bg-emerald-500/20 text-emerald-300"
                                         : "bg-amber-500/20 text-amber-300"
                                     }`}>
-                                      {tc.status}
+                                      {tc.status || (tc.passed ? "Passed" : "Edge Review")}
                                     </span>
                                   </div>
                                 ))}

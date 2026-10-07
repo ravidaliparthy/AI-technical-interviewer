@@ -242,6 +242,30 @@ CANONICAL_SIGNATURES: Dict[str, Dict[str, Any]] = {
         "return_type": "int",
         "test_call": "findMissing([3, 7, 1, 2, 8, 4, 5, 6], 9)"
     },
+    "combinations": {
+        "fn": "combine",
+        "params": [("n", "int"), ("k", "int")],
+        "return_type": "List[List[int]]",
+        "test_call": "combine(4, 2)"
+    },
+    "generate combinations": {
+        "fn": "combine",
+        "params": [("n", "int"), ("k", "int")],
+        "return_type": "List[List[int]]",
+        "test_call": "combine(4, 2)"
+    },
+    "combine": {
+        "fn": "combine",
+        "params": [("n", "int"), ("k", "int")],
+        "return_type": "List[List[int]]",
+        "test_call": "combine(4, 2)"
+    },
+    "subsets": {
+        "fn": "subsets",
+        "params": [("nums", "List[int]")],
+        "return_type": "List[List[int]]",
+        "test_call": "subsets([1, 2, 3])"
+    },
     "diameter of binary tree": {
         "fn": "diameterOfBinaryTree",
         "params": [("root", "TreeNode")],

@@ -227,7 +227,7 @@ def __run_harness():
 
     # Check top-level functions
     if not fn:
-        for name in ['twoSum', 'solve', 'findMissing', 'missingNumber', 'lengthOfLongestSubstring', 'isValid', 'maxProfit', 'mergeTwoLists', 'reverselist', 'search', 'isAnagram', 'numIslands']:
+        for name in ['twoSum', 'solve', 'combine', 'subsets', 'permute', 'findMissing', 'missingNumber', 'lengthOfLongestSubstring', 'isValid', 'maxProfit', 'mergeTwoLists', 'reverselist', 'search', 'isAnagram', 'numIslands']:
             if name in globs and callable(globs[name]):
                 fn = globs[name]
                 break
@@ -257,6 +257,16 @@ def __run_harness():
         tests = [
             {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": "nums=[2,7,11,15], target=9", "is_indices": True}},
             {{"args": ([3, 2, 4], 6), "expected": [1, 2], "desc": "nums=[3,2,4], target=6", "is_indices": True}}
+        ]
+    elif "combine" in fname_lower or "combination" in p_lower:
+        tests = [
+            {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": "n=4, k=2", "is_nested_set": True}},
+            {{"args": (1, 1), "expected": [[1]], "desc": "n=1, k=1", "is_nested_set": True}}
+        ]
+    elif "subsets" in fname_lower or "subset" in p_lower:
+        tests = [
+            {{"args": ([1, 2, 3],), "expected": [[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]], "desc": "nums=[1,2,3]", "is_nested_set": True}},
+            {{"args": ([0],), "expected": [[], [0]], "desc": "nums=[0]", "is_nested_set": True}}
         ]
     elif "missing" in fname_lower or "missing" in p_lower:
         tests = [
@@ -310,13 +320,18 @@ def __run_harness():
             {{"args": ("hello",), "expected": "olleh", "desc": "s='hello'"}}
         ]
     else:
-        # Default probe with parameters
+        # Default probe with exact parameter-count awareness to prevent argument mismatch
         arg_count = getattr(fn, '__code__', None).co_argcount if hasattr(fn, '__code__') else 1
         varnames = getattr(fn, '__code__', None).co_varnames[:arg_count] if hasattr(fn, '__code__') else []
         if 'nums' in varnames and 'target' in varnames:
             tests = [
                 {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": "nums=[2,7,11,15], target=9", "is_indices": True}},
                 {{"args": ([3, 2, 4], 6), "expected": [1, 2], "desc": "nums=[3,2,4], target=6", "is_indices": True}}
+            ]
+        elif 'n' in varnames and 'k' in varnames:
+            tests = [
+                {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": "n=4, k=2", "is_nested_set": True}},
+                {{"args": (1, 1), "expected": [[1]], "desc": "n=1, k=1", "is_nested_set": True}}
             ]
         elif 's' in varnames:
             tests = [
@@ -329,6 +344,20 @@ def __run_harness():
                 {{"args": ([3, 7, 1, 2, 8, 4, 5, 6], 9), "expected": 9, "desc": "arr=[3, 7, 1, 2, 8, 4, 5, 6], n=9"}},
                 {{"args": ([1, 2, 4, 5, 6], 6), "expected": 3, "desc": "arr=[1, 2, 4, 5, 6], n=6"}},
                 {{"args": ([], 1), "expected": 1, "desc": "arr=[], n=1"}}
+            ]
+        elif arg_count == 2:
+            p1 = varnames[0] if len(varnames) > 0 else "param1"
+            p2 = varnames[1] if len(varnames) > 1 else "param2"
+            tests = [
+                {{"args": (4, 2), "expected": None, "desc": f"{{p1}}=4, {{p2}}=2"}}
+            ]
+        elif arg_count >= 3:
+            tests = [
+                {{"args": tuple([1] * arg_count), "expected": None, "desc": f"Multi-argument test ({{arg_count}} args)"}}
+            ]
+        elif 'n' in varnames or 'k' in varnames:
+            tests = [
+                {{"args": (5,), "expected": None, "desc": "n=5"}}
             ]
         else:
             tests = [
@@ -356,6 +385,10 @@ def __run_harness():
             elif expected is not None:
                 if t.get("is_indices") and isinstance(actual, (list, tuple)) and isinstance(expected, (list, tuple)):
                     passed = (sorted(actual) == sorted(expected))
+                elif t.get("is_nested_set") and isinstance(actual, (list, tuple)) and isinstance(expected, (list, tuple)):
+                    norm_a = sorted([sorted(list(x)) if isinstance(x, (list, tuple)) else [x] for x in actual])
+                    norm_e = sorted([sorted(list(x)) if isinstance(x, (list, tuple)) else [x] for x in expected])
+                    passed = (norm_a == norm_e)
                 else:
                     passed = (actual == expected)
                 
