@@ -998,6 +998,8 @@ def run_builtin_start(
 
     # 3. Standard Topic Greeting
     questions = get_questions_for_topic(topic, difficulty, count=target_q)
+    import random
+    random.shuffle(questions)
     greeting_parts = [
         f"Hello and welcome to your technical interview on **{topic}** ({difficulty} difficulty, {target_q} questions)."
     ]
@@ -1729,7 +1731,7 @@ GROQ_MODELS = [
     "llama-3.3-70b-versatile"
 ]
 
-async def call_groq_api(system_prompt: str, user_prompt: str, api_key: str) -> Dict[str, Any]:
+async def call_groq_api(system_prompt: str, user_prompt: str, api_key: str, temperature: float = 0.7) -> Dict[str, Any]:
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -1746,7 +1748,7 @@ async def call_groq_api(system_prompt: str, user_prompt: str, api_key: str) -> D
                 {"role": "user", "content": user_prompt}
             ],
             "response_format": {"type": "json_object"},
-            "temperature": 0.3
+            "temperature": temperature
         }
         try:
             async with httpx.AsyncClient(limits=HTTPX_LIMITS, timeout=25.0) as client:
@@ -1859,24 +1861,87 @@ async def start_interview(req: StartInterviewRequest):
 
     if (active_provider in ("groq", "auto")) and api_key_to_use:
         try:
+            import random
+            import uuid
+
+            session_id = uuid.uuid4().hex[:6]
             system_prompt = build_interviewer_system_prompt(effective_topic, req.difficulty, req.resume_text, company=req.company)
             company_ctx = f" Target Company: {req.company}." if req.company else ""
+
+            dsa_subdomains = [
+                "Arrays and Two Pointers",
+                "Hash Maps and Frequency Counters",
+                "Sliding Window and Subarrays",
+                "Binary Search and Monotonic Invariants",
+                "Linked Lists and Fast/Slow Pointers",
+                "Stacks and Monotonic Queues",
+                "Binary Trees and Depth-First Search",
+                "Breadth-First Search and Matrices",
+                "Dynamic Programming and Memoization",
+                "Greedy Algorithms and Interval Scheduling",
+                "Backtracking and Combinations",
+                "Heaps and Priority Queues",
+                "Prefix Sums and Difference Arrays",
+                "String Matching and Palindromes"
+            ]
+
+            python_subdomains = [
+                "CPython Memory Management and Small Object Pools",
+                "Asyncio Event Loops and Concurrency Primitives",
+                "Decorators, Closures, and Metaclasses",
+                "Dictionary Hash Collisions and Object Interning",
+                "Generators, Iterators, and Yield Semantics"
+            ]
+
+            ml_subdomains = [
+                "Evaluation Metrics on Imbalanced Datasets (ROC-AUC vs PR-AUC)",
+                "Data Leakage and Cross-Validation Safeguards",
+                "Loss Formulations, Regularization (L1/L2), and Overfitting",
+                "Model Drift, Covariate Shift, and Telemetry",
+                "Production ML Serving and Real-Time Latency"
+            ]
+
+            sys_subdomains = [
+                "Distributed Caching, Redis Eviction, and Thundering Herd",
+                "Database Sharding, Replication, and CAP Consistency",
+                "Event-Driven Architecture, Kafka, and Idempotent Consumers",
+                "Rate Limiting, Token Buckets, and API Gateways"
+            ]
+
+            focus_instruction = ""
+            if is_dsa_topic(effective_topic):
+                chosen_sub = random.choice(dsa_subdomains)
+                focus_instruction = (
+                    f" For this interview session (Session ID: {session_id}), formulate a challenge focusing on '{chosen_sub}'. "
+                    f"Ensure the question is a distinct {req.difficulty}-level problem from this domain. "
+                    f"Do NOT default to standard textbook problems like Missing Number or Two Sum if another interesting problem from {chosen_sub} can be presented."
+                )
+            elif is_ml_topic(effective_topic):
+                chosen_sub = random.choice(ml_subdomains)
+                focus_instruction = f" Focus on '{chosen_sub}' for this session (Session ID: {session_id})."
+            elif is_sys_topic(effective_topic):
+                chosen_sub = random.choice(sys_subdomains)
+                focus_instruction = f" Focus on '{chosen_sub}' for this session (Session ID: {session_id})."
+            elif "python" in effective_topic.lower():
+                chosen_sub = random.choice(python_subdomains)
+                focus_instruction = f" Focus on '{chosen_sub}' for this session (Session ID: {session_id})."
+
             if req.resume_text and req.company:
                 user_msg = (
                     f"Start the technical interview for {req.company}. The candidate has provided their resume. "
                     f"Introduce yourself as an engineering interviewer at {req.company}, briefly acknowledge their background, "
-                    f"and formulate the first question DIRECTLY cross-examining their flagship resume project through {req.company}'s engineering standards and scale. "
+                    f"and formulate the first question DIRECTLY cross-examining their flagship resume project through {req.company}'s engineering standards and scale.{focus_instruction} "
                     f"Total questions: {req.total_questions}."
                 )
             elif req.resume_text:
                 user_msg = (
                     f"Start the technical interview. Formulate the first question DIRECTLY based on the candidate's actual projects, "
-                    f"experience, and tech stack from their resume. Introduce yourself briefly and ask. Total questions: {req.total_questions}."
+                    f"experience, and tech stack from their resume.{focus_instruction} Introduce yourself briefly and ask. Total questions: {req.total_questions}."
                 )
             else:
-                user_msg = f"Start the technical interview for topic '{effective_topic}' at '{req.difficulty}' difficulty.{company_ctx} Total questions: {req.total_questions}. Introduce yourself and ask the first question."
+                user_msg = f"Start the technical interview for topic '{effective_topic}' at '{req.difficulty}' difficulty.{company_ctx}{focus_instruction} Total questions: {req.total_questions}. Introduce yourself and ask the first question."
 
-            data = await call_groq_api(system_prompt, user_msg, api_key_to_use)
+            data = await call_groq_api(system_prompt, user_msg, api_key_to_use, temperature=0.7)
             msg = data.get("message", "Let's begin: Could you explain the core concepts of " + effective_topic + "?")
             meta = build_interview_response_metadata(msg, effective_topic)
             return InterviewResponse(

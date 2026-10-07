@@ -11,7 +11,103 @@ import tempfile
 import time
 import json
 import re
+import ast
 from typing import Dict, List, Any, Optional
+
+def parse_input_arguments(input_str: str):
+    clean = input_str.strip().replace('`', '')
+    clean = re.sub(r'[\'"]?([a-zA-Z_]\w*)[\'"]?\s*=', r'\1=', clean)
+    
+    parts = []
+    current = []
+    bracket_depth = 0
+    in_quote = None
+    for char in clean:
+        if char in ('"', "'"):
+            if in_quote == char:
+                in_quote = None
+            elif in_quote is None:
+                in_quote = char
+        elif in_quote is None:
+            if char in '([{':
+                bracket_depth += 1
+            elif char in ')]}':
+                bracket_depth -= 1
+        
+        if char == ',' and bracket_depth == 0 and in_quote is None:
+            parts.append(''.join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if current:
+        parts.append(''.join(current).strip())
+        
+    args = []
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if '=' in part:
+            _, val = part.split('=', 1)
+            val = val.strip()
+        else:
+            val = part
+        try:
+            val_py = val.replace('true', 'True').replace('false', 'False').replace('null', 'None')
+            args.append(ast.literal_eval(val_py))
+        except Exception:
+            args.append(val.strip('"\'`'))
+    return tuple(args)
+
+def parse_expected_output(output_str: str):
+    clean = output_str.strip().strip('`\'"')
+    clean = re.sub(r'^(?:Output:\s*|->\s*|➔\s*)', '', clean, flags=re.IGNORECASE).strip()
+    clean_py = clean.replace('true', 'True').replace('false', 'False').replace('null', 'None')
+    try:
+        return ast.literal_eval(clean_py)
+    except Exception:
+        return clean
+
+def extract_test_cases_from_text(text: str) -> List[Dict[str, Any]]:
+    if not text:
+        return []
+    tests = []
+    
+    # Pattern 1: Multi-line numbered test cases (e.g. 1. Input: arr = [...], n = 9 \n Output: 9)
+    pattern1 = re.compile(
+        r'(?:Test\s*Case\s*\d+|\d+\.)[:\s]*Input[:\s]+([^\n\r]+?)(?:\n|\r\n)\s*Output[:\s]+([^\n\r]+?)(?:\n|\r\n|$)',
+        re.IGNORECASE
+    )
+    for m in pattern1.finditer(text):
+        in_raw = m.group(1).strip()
+        out_raw = m.group(2).strip()
+        args = parse_input_arguments(in_raw)
+        expected = parse_expected_output(out_raw)
+        tests.append({
+            "args": args,
+            "expected": expected,
+            "desc": in_raw.replace('`', '')
+        })
+
+    # Pattern 2: Single line test cases with arrow or Output: (e.g. - **Test Case 1**: Input: nums=[2,7,11,15], target=9 ➔ Output: [0, 1])
+    if not tests:
+        lines = text.splitlines()
+        for line in lines:
+            line_clean = line.strip()
+            if "input:" in line_clean.lower() and any(sep in line_clean for sep in ["➔", "->", "Output:", "output:"]):
+                m = re.search(r'Input[:\s]+(.+?)\s*(?:➔|->|\bOutput:)\s*(?:Output[:\s]+)?([^\(\n\r]+)', line_clean, re.IGNORECASE)
+                if m:
+                    in_raw = m.group(1).strip()
+                    out_raw = m.group(2).strip()
+                    args = parse_input_arguments(in_raw)
+                    expected = parse_expected_output(out_raw)
+                    tests.append({
+                        "args": args,
+                        "expected": expected,
+                        "desc": in_raw.replace('`', '')
+                    })
+
+    return tests
 
 def _is_empty_or_placeholder(code: str) -> bool:
     """Detects if code is empty, only comments, or only has a function signature with 'pass'."""
@@ -100,6 +196,17 @@ def execute_candidate_code(
 def _run_python_code(code: str, problem_title: str, custom_input: Optional[str], start_time: float) -> Dict[str, Any]:
     prob_clean = re.sub(r'[\r\n"\'\\]+', ' ', problem_title).lower() if problem_title else ""
     
+    # Extract dynamic test cases directly from problem text
+    extracted_tests = extract_test_cases_from_text(problem_title)
+    if custom_input and custom_input.strip():
+        try:
+            c_args = parse_input_arguments(custom_input)
+            extracted_tests.insert(0, {"args": c_args, "expected": None, "desc": f"Custom: {custom_input.strip()}"})
+        except Exception:
+            pass
+    
+    extracted_tests_repr = repr(extracted_tests)
+
     harness = f"""
 import sys, io, json
 
@@ -120,7 +227,7 @@ def __run_harness():
 
     # Check top-level functions
     if not fn:
-        for name in ['twoSum', 'solve', 'lengthOfLongestSubstring', 'isValid', 'maxProfit', 'mergeTwoLists', 'reverselist', 'search', 'isAnagram', 'numIslands']:
+        for name in ['twoSum', 'solve', 'findMissing', 'missingNumber', 'lengthOfLongestSubstring', 'isValid', 'maxProfit', 'mergeTwoLists', 'reverselist', 'search', 'isAnagram', 'numIslands']:
             if name in globs and callable(globs[name]):
                 fn = globs[name]
                 break
@@ -142,11 +249,20 @@ def __run_harness():
     tests = []
     fname_lower = fn_name.lower()
     p_lower = "{prob_clean}"
+    dynamic_suite = {extracted_tests_repr}
 
-    if "twosum" in fname_lower or "two sum" in p_lower:
+    if dynamic_suite:
+        tests = dynamic_suite
+    elif "twosum" in fname_lower or "two sum" in p_lower:
         tests = [
             {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": "nums=[2,7,11,15], target=9", "is_indices": True}},
             {{"args": ([3, 2, 4], 6), "expected": [1, 2], "desc": "nums=[3,2,4], target=6", "is_indices": True}}
+        ]
+    elif "missing" in fname_lower or "missing" in p_lower:
+        tests = [
+            {{"args": ([3, 7, 1, 2, 8, 4, 5, 6], 9), "expected": 9, "desc": "arr=[3, 7, 1, 2, 8, 4, 5, 6], n=9"}},
+            {{"args": ([1, 2, 4, 5, 6], 6), "expected": 3, "desc": "arr=[1, 2, 4, 5, 6], n=6"}},
+            {{"args": ([], 1), "expected": 1, "desc": "arr=[], n=1"}}
         ]
     elif "palindrome" in fname_lower or "palindrome" in p_lower:
         if "longest" in p_lower and ("subsequence" in p_lower or "build" in p_lower or "length" in p_lower):
@@ -207,6 +323,12 @@ def __run_harness():
                 {{"args": ("A man, a plan, a canal: Panama",), "expected": True, "desc": "s='A man, a plan, a canal: Panama'"}},
                 {{"args": ("racecar",), "expected": True, "desc": "s='racecar'"}},
                 {{"args": ("hello",), "expected": False, "desc": "s='hello'"}}
+            ]
+        elif ('arr' in varnames and 'n' in varnames) or 'arr' in varnames:
+            tests = [
+                {{"args": ([3, 7, 1, 2, 8, 4, 5, 6], 9), "expected": 9, "desc": "arr=[3, 7, 1, 2, 8, 4, 5, 6], n=9"}},
+                {{"args": ([1, 2, 4, 5, 6], 6), "expected": 3, "desc": "arr=[1, 2, 4, 5, 6], n=6"}},
+                {{"args": ([], 1), "expected": 1, "desc": "arr=[], n=1"}}
             ]
         else:
             tests = [
@@ -374,6 +496,15 @@ __run_harness()
 
 def _run_javascript_code(code: str, problem_title: str, custom_input: Optional[str], start_time: float) -> Dict[str, Any]:
     prob_clean = problem_title.lower() if problem_title else ""
+    dynamic_tests = extract_test_cases_from_text(problem_title)
+    if custom_input and custom_input.strip():
+        try:
+            c_args = parse_input_arguments(custom_input)
+            dynamic_tests.insert(0, {"args": list(c_args), "expected": None, "desc": f"Custom: {custom_input.strip()}"})
+        except Exception:
+            pass
+    js_dynamic_json = json.dumps(dynamic_tests)
+
     harness = f"""
 {code}
 
@@ -381,6 +512,8 @@ function __run_js_harness() {{
     let fn = null;
     if (typeof twoSum === 'function') fn = twoSum;
     else if (typeof solve === 'function') fn = solve;
+    else if (typeof findMissing === 'function') fn = findMissing;
+    else if (typeof missingNumber === 'function') fn = missingNumber;
     else if (typeof lengthOfLongestSubstring === 'function') fn = lengthOfLongestSubstring;
     else if (typeof isAnagram === 'function') fn = isAnagram;
     else if (typeof mergeTwoLists === 'function') fn = mergeTwoLists;
@@ -395,11 +528,20 @@ function __run_js_harness() {{
     let tests = [];
     let p = "{prob_clean}";
     let fname = fn.name.toLowerCase();
+    let dynamicSuite = {js_dynamic_json};
 
-    if (fname.includes("twosum") || p.includes("two sum")) {{
+    if (dynamicSuite && dynamicSuite.length > 0) {{
+        tests = dynamicSuite;
+    }} else if (fname.includes("twosum") || p.includes("two sum")) {{
         tests = [
             {{ args: [[2, 7, 11, 15], 9], expected: [0, 1], desc: "nums=[2,7,11,15], target=9" }},
             {{ args: [[3, 2, 4], 6], expected: [1, 2], desc: "nums=[3,2,4], target=6" }}
+        ];
+    }} else if (fname.includes("missing") || p.includes("missing")) {{
+        tests = [
+            {{ args: [[3, 7, 1, 2, 8, 4, 5, 6], 9], expected: 9, desc: "arr=[3,7,1,2,8,4,5,6], n=9" }},
+            {{ args: [[1, 2, 4, 5, 6], 6], expected: 3, desc: "arr=[1,2,4,5,6], n=6" }},
+            {{ args: [[], 1], expected: 1, desc: "arr=[], n=1" }}
         ];
     }} else if (fname.includes("palindrome") || p.includes("palindrome")) {{
         tests = [

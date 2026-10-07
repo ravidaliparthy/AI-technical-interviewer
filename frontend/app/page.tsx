@@ -579,7 +579,7 @@ export default function Home() {
         body: JSON.stringify({
           code: codeSnippet,
           language: codeLanguage,
-          problem: currentProblemTitle || latestInterviewerMsg,
+          problem: latestInterviewerMsg || currentProblemTitle,
           custom_input: customInput.trim() || null,
         }),
       });

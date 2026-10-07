@@ -224,6 +224,24 @@ CANONICAL_SIGNATURES: Dict[str, Dict[str, Any]] = {
         "needs_tree": True,
         "test_call": "invertTree(root)"
     },
+    "missing number": {
+        "fn": "findMissing",
+        "params": [("arr", "List[int]"), ("n", "int")],
+        "return_type": "int",
+        "test_call": "findMissing([3, 7, 1, 2, 8, 4, 5, 6], 9)"
+    },
+    "findmissing": {
+        "fn": "findMissing",
+        "params": [("arr", "List[int]"), ("n", "int")],
+        "return_type": "int",
+        "test_call": "findMissing([3, 7, 1, 2, 8, 4, 5, 6], 9)"
+    },
+    "missing": {
+        "fn": "findMissing",
+        "params": [("arr", "List[int]"), ("n", "int")],
+        "return_type": "int",
+        "test_call": "findMissing([3, 7, 1, 2, 8, 4, 5, 6], 9)"
+    },
     "diameter of binary tree": {
         "fn": "diameterOfBinaryTree",
         "params": [("root", "TreeNode")],
@@ -252,7 +270,44 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
                 data.get("needs_list", False)
             )
 
-    # 2. Extract title if present: e.g. "### Problem: Name"
+    # 2. Check for explicit function signature declared in text:
+    # e.g. "Write a function 'findMissing(arr, n)'" or `findMissing(arr, n)`
+    sig_match = re.search(r'(?:function|def|write a function)\s*[`\'"]?([a-zA-Z_]\w*)\s*\(([^)]*)\)[`\'"]?', question_text, re.IGNORECASE)
+    if not sig_match:
+        sig_match = re.search(r'`([a-zA-Z_]\w*)\s*\(([^)]*)\)`', question_text)
+
+    if sig_match:
+        fn_name = sig_match.group(1).strip()
+        raw_args = sig_match.group(2).strip()
+        if raw_args:
+            parsed_params: List[Tuple[str, str]] = []
+            for arg in raw_args.split(","):
+                arg_name = arg.strip().split(":")[0].split("=")[0].strip()
+                arg_name = re.sub(r'[`\'"]', '', arg_name)
+                if arg_name:
+                    if arg_name in ("root", "p", "q") and ("tree" in q_lower or "root" in q_lower):
+                        t = "TreeNode"
+                    elif arg_name == "head" or ("list" in arg_name and "linked" in q_lower):
+                        t = "ListNode"
+                    elif arg_name in ("nums", "arr", "prices", "height", "heights", "coins"):
+                        t = "List[int]"
+                    elif arg_name in ("intervals", "matrix", "costs"):
+                        t = "List[List[int]]"
+                    elif arg_name in ("grid",):
+                        t = "List[List[str]]"
+                    elif arg_name in ("s", "t", "word", "str", "chars"):
+                        t = "str"
+                    elif arg_name in ("target", "n", "k", "amount", "val", "size"):
+                        t = "int"
+                    else:
+                        t = "Any"
+                    parsed_params.append((arg_name, t))
+            if parsed_params:
+                needs_tree = any(p[1] == "TreeNode" for p in parsed_params) or "tree" in q_lower
+                needs_list = any(p[1] == "ListNode" for p in parsed_params) or "linked list" in q_lower
+                return (fn_name, parsed_params, "Any", needs_tree, needs_list)
+
+    # 3. Extract title if present: e.g. "### Problem: Name"
     title_match = re.search(r'###\s*Problem:\s*([^\n\(\:]+)', question_text)
     fn_name = "solve"
     if title_match:
@@ -261,18 +316,17 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
         if words:
             fn_name = words[0].lower() + "".join(w.capitalize() for w in words[1:])
 
-    # 3. Dynamic parameter detection from test cases or text
+    # 4. Dynamic parameter detection from test cases or text
     params: List[Tuple[str, str]] = []
     needs_tree = "tree" in q_lower or "root" in q_lower or "treenode" in q_lower
     needs_list = ("linked list" in q_lower or "listnode" in q_lower or "head" in q_lower) and not needs_tree
 
-    # Check for variables in test cases e.g. "nums =", "target =", "s =", "matrix ="
-    detected_vars = []
     candidates = [
         ("root", "TreeNode" if needs_tree else "Any"),
         ("p", "TreeNode" if needs_tree else "int"),
         ("q", "TreeNode" if needs_tree else "int"),
         ("head", "ListNode" if needs_list else "Any"),
+        ("arr", "List[int]"),
         ("nums", "List[int]"),
         ("target", "int"),
         ("intervals", "List[List[int]]"),
@@ -295,7 +349,6 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
     ]
 
     for var_name, var_type in candidates:
-        # Check if explicitly mentioned in backticks or assignment: `var` or `var =`
         if re.search(rf'[`\b]{re.escape(var_name)}[`\s]*=', question_text) or re.search(rf'[`]{re.escape(var_name)}[`]', question_text):
             if var_name not in [p[0] for p in params]:
                 params.append((var_name, var_type))
@@ -310,6 +363,8 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
             params = [("s", "str")]
         elif "matrix" in q_lower or "grid" in q_lower:
             params = [("matrix", "List[List[int]]")]
+        elif "arr" in q_lower:
+            params = [("arr", "List[int]"), ("n", "int")]
         else:
             params = [("nums", "List[int]"), ("target", "int")]
 
@@ -360,14 +415,14 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
 
     # 3. TypeScript
     ts_params = ", ".join(
-        f"{name}: {('TreeNode | null' if needs_tree and name in ('root', 'p', 'q') else ('ListNode | null' if needs_list and name == 'head' else ('number[]' if 'num' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('number[][]' if name in ('intervals', 'matrix', 'costs') else 'number')))))}"
+        f"{name}: {('TreeNode | null' if needs_tree and name in ('root', 'p', 'q') else ('ListNode | null' if needs_list and name == 'head' else ('number[]' if 'num' in name or 'arr' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('number[][]' if name in ('intervals', 'matrix', 'costs') else 'number')))))}"
         for name, _ in params
     )
     ts_code = f"function {fn_name}({ts_params}): any {{\n    // State Time Complexity: O(?), Space Complexity: O(?)\n    // Write your solution below\n    return null;\n}}\n"
 
     # 4. C++ (C++20)
     cpp_params = ", ".join(
-        f"{('TreeNode*' if needs_tree and name in ('root', 'p', 'q') else ('ListNode*' if needs_list and name == 'head' else ('vector<int>&' if 'num' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('vector<vector<int>>&' if name in ('intervals', 'matrix', 'costs') else 'int')))))} {name}"
+        f"{('TreeNode*' if needs_tree and name in ('root', 'p', 'q') else ('ListNode*' if needs_list and name == 'head' else ('vector<int>&' if 'num' in name or 'arr' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('vector<vector<int>>&' if name in ('intervals', 'matrix', 'costs') else 'int')))))} {name}"
         for name, _ in params
     )
     cpp_ret = "TreeNode*" if needs_tree and fn_name == "lowestCommonAncestor" else "int"
@@ -388,7 +443,7 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
 
     # 5. Java (Java 21)
     java_params = ", ".join(
-        f"{('TreeNode' if needs_tree and name in ('root', 'p', 'q') else ('ListNode' if needs_list and name == 'head' else ('int[]' if 'num' in name or name in ('prices', 'height', 'coins') else ('String' if name in ('s', 't') else ('int[][]' if name in ('intervals', 'matrix', 'costs') else 'int')))))} {name}"
+        f"{('TreeNode' if needs_tree and name in ('root', 'p', 'q') else ('ListNode' if needs_list and name == 'head' else ('int[]' if 'num' in name or 'arr' in name or name in ('prices', 'height', 'coins') else ('String' if name in ('s', 't') else ('int[][]' if name in ('intervals', 'matrix', 'costs') else 'int')))))} {name}"
         for name, _ in params
     )
     java_ret = "TreeNode" if needs_tree and fn_name == "lowestCommonAncestor" else "int[]"
@@ -405,7 +460,7 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
 
     # 6. Go (1.22)
     go_params = ", ".join(
-        f"{name} {('*TreeNode' if needs_tree and name in ('root', 'p', 'q') else ('*ListNode' if needs_list and name == 'head' else ('[]int' if 'num' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('[][]int' if name in ('intervals', 'matrix', 'costs') else 'int')))))}"
+        f"{name} {('*TreeNode' if needs_tree and name in ('root', 'p', 'q') else ('*ListNode' if needs_list and name == 'head' else ('[]int' if 'num' in name or 'arr' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('[][]int' if name in ('intervals', 'matrix', 'costs') else 'int')))))}"
         for name, _ in params
     )
     go_code = (
