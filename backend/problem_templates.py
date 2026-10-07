@@ -505,7 +505,7 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
     if raw_title and raw_title != "Algorithmic Challenge":
         title_lower = raw_title.lower().strip()
         for key, data in CANONICAL_SIGNATURES.items():
-            if key == title_lower or key in title_lower:
+            if key == title_lower:
                 return (
                     data["fn"],
                     data["params"],
@@ -513,16 +513,6 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
                     data.get("needs_tree", False),
                     data.get("needs_list", False)
                 )
-
-    for key, data in CANONICAL_SIGNATURES.items():
-        if re.search(rf'\b{re.escape(key)}\b', q_lower):
-            return (
-                data["fn"],
-                data["params"],
-                data.get("return_type", "Any"),
-                data.get("needs_tree", False),
-                data.get("needs_list", False)
-            )
 
     # 2. Check for explicit function signature declared in text:
     # e.g. "Write a function 'findMissing(arr, n)'" or `findMissing(arr, n)`
@@ -576,7 +566,68 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
     if not fn_name or not (fn_name[0].isalpha() or fn_name[0] == '_'):
         fn_name = "solve"
 
-    # 4. Dynamic parameter detection from test cases or text
+    # 3. Dynamic parameter detection from extracted test cases
+    try:
+        from code_runner import extract_test_cases_from_text
+        extracted = extract_test_cases_from_text(question_text)
+    except Exception:
+        extracted = []
+
+    if extracted and extracted[0].get("args") is not None:
+        sample_tc = extracted[0]
+        sample_args = sample_tc["args"]
+        if isinstance(sample_args, list):
+            sample_args = tuple(sample_args)
+        elif not isinstance(sample_args, tuple):
+            sample_args = (sample_args,)
+
+        desc = sample_tc.get("desc", "")
+        var_names_in_desc = re.findall(r'([a-zA-Z_]\w*)\s*=', desc)
+        
+        tc_params: List[Tuple[str, str]] = []
+        for i, val in enumerate(sample_args):
+            name = var_names_in_desc[i] if i < len(var_names_in_desc) else f"param{i+1}"
+            
+            # Infer type from value
+            if isinstance(val, bool):
+                val_type = "bool"
+            elif isinstance(val, int):
+                val_type = "int"
+            elif isinstance(val, float):
+                val_type = "float"
+            elif isinstance(val, str):
+                val_type = "str"
+            elif isinstance(val, list):
+                if not val:
+                    val_type = "List[Any]"
+                elif isinstance(val[0], int):
+                    val_type = "List[int]"
+                elif isinstance(val[0], str):
+                    val_type = "List[str]"
+                elif isinstance(val[0], list):
+                    val_type = "List[List[int]]" if (val[0] and isinstance(val[0][0], int)) else "List[List[str]]"
+                else:
+                    val_type = "List[Any]"
+            elif isinstance(val, dict):
+                val_type = "Dict[str, Any]"
+            else:
+                val_type = "Any"
+            
+            # Special TreeNode / ListNode heuristics
+            if "tree" in q_lower and name in ("root", "p", "q"):
+                val_type = "TreeNode"
+            elif "linked" in q_lower and name in ("head", "list1", "list2"):
+                val_type = "ListNode"
+
+            tc_params.append((name, val_type))
+
+        if tc_params and len(tc_params) == len(sample_args):
+            needs_tree = any(p[1] == "TreeNode" for p in tc_params) or "tree" in q_lower
+            needs_list = any(p[1] == "ListNode" for p in tc_params) or "linked list" in q_lower
+            ret_type = "bool" if any(w in fn_name.lower() for w in ["is", "has", "can", "valid"]) else "Any"
+            return (fn_name, tc_params, ret_type, needs_tree, needs_list)
+
+    # 4. Fallback candidates detection
     params: List[Tuple[str, str]] = []
     needs_tree = "tree" in q_lower or "root" in q_lower or "treenode" in q_lower
     needs_list = ("linked list" in q_lower or "listnode" in q_lower or "head" in q_lower) and not needs_tree

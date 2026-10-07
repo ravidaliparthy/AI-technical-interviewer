@@ -805,6 +805,310 @@ CANONICAL_DSA_CATALOG: Dict[str, Dict[str, Any]] = {
             {"args": ([1, 1, 2],), "expected": 2, "desc": "nums = [1, 1, 2]"},
             {"args": ([0, 0, 1, 1, 1, 2, 2, 3, 3, 4],), "expected": 5, "desc": "nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]"}
         ]
+    },
+    # 54. Maximum Sum Subarray of Size K
+    "maximum sum subarray of size k": {
+        "title": "Maximum Sum Subarray of Size K",
+        "fn": "maxSumSubarray",
+        "aliases": ["maximum sum subarray of size k", "max sum subarray of size k", "max sum subarray", "maxsumsubarray", "max_sum_subarray"],
+        "params": [("nums", "List[int]"), ("k", "int")],
+        "return_type": "int",
+        "test_call": "maxSumSubarray([2, 1, 5, 1, 3, 2], 3)",
+        "tests": [
+            {"args": ([2, 1, 5, 1, 3, 2], 3), "expected": 9, "desc": "nums = [2, 1, 5, 1, 3, 2], k = 3"},
+            {"args": ([2, 3, 4, 1, 5], 2), "expected": 7, "desc": "nums = [2, 3, 4, 1, 5], k = 2"},
+            {"args": ([1, -2, 3, -1, 5], 4), "expected": 5, "desc": "nums = [1, -2, 3, -1, 5], k = 4"}
+        ]
+    },
+
+    # 55. First Index Greater Than Target
+    "first index greater than target": {
+        "title": "First Index Greater Than Target",
+        "fn": "firstGreaterIndex",
+        "aliases": ["first index greater than target", "first index greater", "firstgreaterindex", "first_greater_index"],
+        "params": [("arr", "List[int]"), ("target", "int")],
+        "return_type": "int",
+        "test_call": "firstGreaterIndex([1, 2, 4, 4, 5, 7], 4)",
+        "tests": [
+            {"args": ([1, 2, 4, 4, 5, 7], 4), "expected": 4, "desc": "arr = [1, 2, 4, 4, 5, 7], target = 4"},
+            {"args": ([2, 3, 5, 8, 10], 8), "expected": 4, "desc": "arr = [2, 3, 5, 8, 10], target = 8"},
+            {"args": ([1, 2, 3], 5), "expected": -1, "desc": "arr = [1, 2, 3], target = 5"}
+        ]
+    },
+
+    # 56. Most Frequent Element
+    "most frequent element": {
+        "title": "Most Frequent Element",
+        "fn": "mostFrequent",
+        "aliases": ["most frequent element", "most frequent", "mostfrequent", "most_frequent"],
+        "params": [("nums", "List[int]")],
+        "return_type": "int",
+        "test_call": "mostFrequent([1, 3, 2, 1, 4, 1])",
+        "tests": [
+            {"args": ([1, 3, 2, 1, 4, 1],), "expected": 1, "desc": "nums = [1, 3, 2, 1, 4, 1]"},
+            {"args": ([5, 5, 4, 4, 3],), "expected": 4, "desc": "nums = [5, 5, 4, 4, 3]"},
+            {"args": ([7],), "expected": 7, "desc": "nums = [7]"}
+        ]
+    },
+
+    # 57. Two City Scheduling
+    "two city scheduling": {
+        "title": "Two City Scheduling",
+        "fn": "twoCitySchedCost",
+        "aliases": ["two city scheduling", "twocityschedcost", "two_city_sched_cost"],
+        "params": [("costs", "List[List[int]]")],
+        "return_type": "int",
+        "test_call": "twoCitySchedCost([[10,20],[30,200],[400,50],[30,20]])",
+        "tests": [
+            {"args": ([[10,20],[30,200],[400,50],[30,20]],), "expected": 110, "desc": "costs = [[10,20],[30,200],[400,50],[30,20]]"},
+            {"args": ([[259,770],[448,54],[926,667],[184,139],[540,777],[115,77]],), "expected": 1859, "desc": "costs = [[259,770],[448,54],[926,667],[184,139],[540,777],[115,77]]"}
+        ]
+    },
+
+    # 58. Basic Calculator II
+    "basic calculator ii": {
+        "title": "Basic Calculator II",
+        "fn": "calculate",
+        "aliases": ["basic calculator ii", "basic calculator 2", "calculate", "basic_calculator"],
+        "params": [("s", "str")],
+        "return_type": "int",
+        "test_call": "calculate('3+2*2')",
+        "tests": [
+            {"args": ("3+2*2",), "expected": 7, "desc": "s = '3+2*2'"},
+            {"args": (" 3/2 ",), "expected": 1, "desc": "s = ' 3/2 '"},
+            {"args": (" 3+5 / 2 ",), "expected": 5, "desc": "s = ' 3+5 / 2 '"}
+        ]
+    },
+
+    # 59. Spiral Matrix
+    "spiral matrix": {
+        "title": "Spiral Matrix",
+        "fn": "spiralOrder",
+        "aliases": ["spiral matrix", "spiralorder", "spiral_order"],
+        "params": [("matrix", "List[List[int]]")],
+        "return_type": "List[int]",
+        "test_call": "spiralOrder([[1,2,3],[4,5,6],[7,8,9]])",
+        "tests": [
+            {"args": ([[1,2,3],[4,5,6],[7,8,9]],), "expected": [1,2,3,6,9,8,7,4,5], "desc": "matrix = [[1,2,3],[4,5,6],[7,8,9]]"},
+            {"args": ([[1,2,3,4],[5,6,7,8],[9,10,11,12]],), "expected": [1,2,3,4,8,12,11,10,9,5,6,7], "desc": "matrix = [[1,2,3,4],[5,6,7,8],[9,10,11,12]]"}
+        ]
+    },
+
+    # 60. Subdomain Visit Count
+    "subdomain visit count": {
+        "title": "Subdomain Visit Count",
+        "fn": "subdomainVisits",
+        "aliases": ["subdomain visit count", "subdomainvisits", "subdomain_visits"],
+        "params": [("cpdomains", "List[str]")],
+        "return_type": "List[str]",
+        "test_call": "subdomainVisits(['9001 discuss.leetcode.com'])",
+        "tests": [
+            {"args": (["9001 discuss.leetcode.com"],), "expected": ["9001 discuss.leetcode.com", "9001 leetcode.com", "9001 com"], "desc": "cpdomains = ['9001 discuss.leetcode.com']", "is_nested_set": True}
+        ]
+    },
+
+    # 61. Intersection of Two Arrays II
+    "intersection of two arrays ii": {
+        "title": "Intersection of Two Arrays II",
+        "fn": "intersect",
+        "aliases": ["intersection of two arrays ii", "intersection of two arrays 2", "intersect", "intersection of two arrays"],
+        "params": [("nums1", "List[int]"), ("nums2", "List[int]")],
+        "return_type": "List[int]",
+        "test_call": "intersect([1,2,2,1], [2,2])",
+        "tests": [
+            {"args": ([1,2,2,1], [2,2]), "expected": [2,2], "desc": "nums1 = [1,2,2,1], nums2 = [2,2]"},
+            {"args": ([4,9,5], [9,4,9,8,4]), "expected": [4,9], "desc": "nums1 = [4,9,5], nums2 = [9,4,9,8,4]"}
+        ]
+    },
+
+    # 62. Number of 1 Bits
+    "number of 1 bits": {
+        "title": "Number of 1 Bits",
+        "fn": "hammingWeight",
+        "aliases": ["number of 1 bits", "hamming weight", "hammingweight", "number of 1 bits (hamming weight)"],
+        "params": [("n", "int")],
+        "return_type": "int",
+        "test_call": "hammingWeight(11)",
+        "tests": [
+            {"args": (11,), "expected": 3, "desc": "n = 11 (binary 1011)"},
+            {"args": (128,), "expected": 1, "desc": "n = 128 (binary 10000000)"},
+            {"args": (2147483645,), "expected": 30, "desc": "n = 2147483645"}
+        ]
+    },
+
+    # 63. Merge K Sorted Lists
+    "merge k sorted lists": {
+        "title": "Merge K Sorted Lists",
+        "fn": "mergeKLists",
+        "aliases": ["merge k sorted lists", "mergeklists", "merge_k_sorted_lists", "k-way merge"],
+        "params": [("lists", "List[ListNode]")],
+        "return_type": "ListNode",
+        "needs_list": True,
+        "test_call": "mergeKLists([[1,4,5],[1,3,4],[2,6]])",
+        "tests": [
+            {"args": ([[1,4,5],[1,3,4],[2,6]],), "expected": [1,1,2,3,4,4,5,6], "desc": "lists = [[1,4,5],[1,3,4],[2,6]]"},
+            {"args": ([],), "expected": [], "desc": "lists = []"},
+            {"args": ([[]],), "expected": [], "desc": "lists = [[]]"}
+        ]
+    },
+
+    # 64. Matrix Block Sum
+    "matrix block sum": {
+        "title": "Matrix Block Sum",
+        "fn": "matrixBlockSum",
+        "aliases": ["matrix block sum", "matrixblocksum", "matrix_block_sum"],
+        "params": [("mat", "List[List[int]]"), ("k", "int")],
+        "return_type": "List[List[int]]",
+        "test_call": "matrixBlockSum([[1,2,3],[4,5,6],[7,8,9]], 1)",
+        "tests": [
+            {"args": ([[1,2,3],[4,5,6],[7,8,9]], 1), "expected": [[12,21,16],[27,45,33],[24,39,28]], "desc": "mat = [[1,2,3],[4,5,6],[7,8,9]], k = 1"},
+            {"args": ([[1,2,3],[4,5,6],[7,8,9]], 2), "expected": [[45,45,45],[45,45,45],[45,45,45]], "desc": "mat = [[1,2,3],[4,5,6],[7,8,9]], k = 2"}
+        ]
+    },
+
+    # 65. Network Delay Time
+    "network delay time": {
+        "title": "Network Delay Time",
+        "fn": "networkDelayTime",
+        "aliases": ["network delay time", "networkdelaytime", "network_delay_time"],
+        "params": [("times", "List[List[int]]"), ("n", "int"), ("k", "int")],
+        "return_type": "int",
+        "test_call": "networkDelayTime([[2,1,1],[2,3,1],[3,4,1]], 4, 2)",
+        "tests": [
+            {"args": ([[2,1,1],[2,3,1],[3,4,1]], 4, 2), "expected": 2, "desc": "times = [[2,1,1],[2,3,1],[3,4,1]], n = 4, k = 2"},
+            {"args": ([[1,2,1]], 2, 1), "expected": 1, "desc": "times = [[1,2,1]], n = 2, k = 1"},
+            {"args": ([[1,2,1]], 2, 2), "expected": -1, "desc": "times = [[1,2,1]], n = 2, k = 2"}
+        ]
+    },
+
+    # 66. Reorganize String
+    "reorganize string": {
+        "title": "Reorganize String",
+        "fn": "reorganizeString",
+        "aliases": ["reorganize string", "reorganizestring", "reorganize_string"],
+        "params": [("s", "str")],
+        "return_type": "str",
+        "test_call": "reorganizeString('aab')",
+        "tests": [
+            {"args": ("aab",), "expected": "aba", "desc": "s = 'aab'"},
+            {"args": ("aaab",), "expected": "", "desc": "s = 'aaab'"}
+        ]
+    },
+
+    # 67. Rank Teams by Votes
+    "rank teams by votes": {
+        "title": "Rank Teams by Votes",
+        "fn": "rankTeams",
+        "aliases": ["rank teams by votes", "rankteams", "rank_teams"],
+        "params": [("votes", "List[str]")],
+        "return_type": "str",
+        "test_call": "rankTeams(['ABC','ACB','ABC','ACB','ACB'])",
+        "tests": [
+            {"args": (["ABC","ACB","ABC","ACB","ACB"],), "expected": "ACB", "desc": "votes = ['ABC','ACB','ABC','ACB','ACB']"},
+            {"args": (["WXYZ","XYZW"],), "expected": "XWYZ", "desc": "votes = ['WXYZ','XYZW']"},
+            {"args": (["ZMNAGUEDSJYLBOPHRQICWFXTVK"],), "expected": "ZMNAGUEDSJYLBOPHRQICWFXTVK", "desc": "single voter"}
+        ]
+    },
+
+    # 68. Is Graph Bipartite?
+    "is graph bipartite": {
+        "title": "Is Graph Bipartite?",
+        "fn": "isBipartite",
+        "aliases": ["is graph bipartite", "is graph bipartite?", "isbipartite", "is_bipartite", "bipartite graph"],
+        "params": [("graph", "List[List[int]]")],
+        "return_type": "bool",
+        "test_call": "isBipartite([[1,2,3],[0,2],[0,1,3],[0,2]])",
+        "tests": [
+            {"args": ([[1,2,3],[0,2],[0,1,3],[0,2]],), "expected": False, "desc": "graph = [[1,2,3],[0,2],[0,1,3],[0,2]]"},
+            {"args": ([[1,3],[0,2],[1,3],[0,2]],), "expected": True, "desc": "graph = [[1,3],[0,2],[1,3],[0,2]]"}
+        ]
+    },
+
+    # 69. Next Permutation
+    "next permutation": {
+        "title": "Next Permutation",
+        "fn": "nextPermutation",
+        "aliases": ["next permutation", "nextpermutation", "next_permutation"],
+        "params": [("nums", "List[int]")],
+        "return_type": "List[int]",
+        "test_call": "nextPermutation([1,2,3])",
+        "tests": [
+            {"args": ([1,2,3],), "expected": [1,3,2], "desc": "nums = [1,2,3]"},
+            {"args": ([3,2,1],), "expected": [1,2,3], "desc": "nums = [3,2,1]"},
+            {"args": ([1,1,5],), "expected": [1,5,1], "desc": "nums = [1,1,5]"}
+        ]
+    },
+
+    # 70. Minimum Cost to Connect Sticks
+    "minimum cost to connect sticks": {
+        "title": "Minimum Cost to Connect Sticks",
+        "fn": "connectSticks",
+        "aliases": ["minimum cost to connect sticks", "connectsticks", "connect_sticks"],
+        "params": [("sticks", "List[int]")],
+        "return_type": "int",
+        "test_call": "connectSticks([2,4,3])",
+        "tests": [
+            {"args": ([2,4,3],), "expected": 14, "desc": "sticks = [2,4,3]"},
+            {"args": ([1,8,3,5],), "expected": 30, "desc": "sticks = [1,8,3,5]"},
+            {"args": ([5],), "expected": 0, "desc": "sticks = [5]"}
+        ]
+    },
+
+    # 71. Edit Distance
+    "edit distance": {
+        "title": "Edit Distance",
+        "fn": "minDistance",
+        "aliases": ["edit distance", "mindistance", "min_distance", "levenshtein"],
+        "params": [("word1", "str"), ("word2", "str")],
+        "return_type": "int",
+        "test_call": "minDistance('horse', 'ros')",
+        "tests": [
+            {"args": ("horse", "ros"), "expected": 3, "desc": "word1 = 'horse', word2 = 'ros'"},
+            {"args": ("intention", "execution"), "expected": 5, "desc": "word1 = 'intention', word2 = 'execution'"}
+        ]
+    },
+
+    # 72. Jump Game
+    "jump game": {
+        "title": "Jump Game",
+        "fn": "canJump",
+        "aliases": ["jump game", "canjump", "can_jump"],
+        "params": [("nums", "List[int]")],
+        "return_type": "bool",
+        "test_call": "canJump([2,3,1,1,4])",
+        "tests": [
+            {"args": ([2,3,1,1,4],), "expected": True, "desc": "nums = [2,3,1,1,4]"},
+            {"args": ([3,2,1,0,4],), "expected": False, "desc": "nums = [3,2,1,0,4]"}
+        ]
+    },
+
+    # 73. Longest Common Prefix
+    "longest common prefix": {
+        "title": "Longest Common Prefix",
+        "fn": "longestCommonPrefix",
+        "aliases": ["longest common prefix", "longestcommonprefix", "longest_common_prefix", "subnet mask calculation & longest common prefix"],
+        "params": [("strs", "List[str]")],
+        "return_type": "str",
+        "test_call": "longestCommonPrefix(['flower','flow','flight'])",
+        "tests": [
+            {"args": (["flower","flow","flight"],), "expected": "fl", "desc": "strs = ['flower','flow','flight']"},
+            {"args": (["dog","racecar","car"],), "expected": "", "desc": "strs = ['dog','racecar','car']"}
+        ]
+    },
+
+    # 74. Reverse Nodes in k-Group
+    "reverse nodes in k-group": {
+        "title": "Reverse Nodes in k-Group",
+        "fn": "reverseKGroup",
+        "aliases": ["reverse nodes in k-group", "reverse nodes in k group", "reversekgroup", "reverse_k_group"],
+        "params": [("head", "ListNode"), ("k", "int")],
+        "return_type": "ListNode",
+        "needs_list": True,
+        "test_call": "reverseKGroup(head, 2)",
+        "tests": [
+            {"args": ([1,2,3,4,5], 2), "expected": [2,1,4,3,5], "desc": "head = [1,2,3,4,5], k = 2"},
+            {"args": ([1,2,3,4,5], 3), "expected": [3,2,1,4,5], "desc": "head = [1,2,3,4,5], k = 3"}
+        ]
     }
 }
 
@@ -817,16 +1121,17 @@ def find_canonical_problem(query: str, fn_name: str = "") -> Optional[Dict[str, 
     clean_q = (query or "").lower().strip()
     clean_fn = (fn_name or "").lower().strip()
 
-    # 1. Match by function name directly
+    # 1. Match by function name directly (exact match or normalized exact alias)
     if clean_fn:
         for key, p in CANONICAL_DSA_CATALOG.items():
             if clean_fn == p["fn"].lower():
                 return p
             for alias in p.get("aliases", []):
-                if clean_fn == alias.replace(" ", "").replace("_", "").lower():
+                norm_alias = alias.replace(" ", "").replace("_", "").lower()
+                if clean_fn == norm_alias:
                     return p
 
-    # 2. Extract title if query contains one (e.g. '### Problem: Find Pair with Target Sum')
+    # 2. Extract problem title if query contains one (e.g. '### Problem: Find Pair with Target Sum')
     title_match = re.search(r'###\s*Problem:\s*([^\n\r]+)', query, re.IGNORECASE)
     if not title_match:
         title_match = re.search(r'##\s*Problem:\s*([^\n\r]+)', query, re.IGNORECASE)
@@ -836,29 +1141,25 @@ def find_canonical_problem(query: str, fn_name: str = "") -> Optional[Dict[str, 
     if title_match:
         extracted_t = title_match.group(1).strip().lower()
         extracted_t = re.sub(r'[\*`_]', '', extracted_t).strip()
-        for key, p in CANONICAL_DSA_CATALOG.items():
-            if key == extracted_t or p["title"].lower() == extracted_t:
+        # Remove parenthetical subtitles e.g. "Basic Calculator II (Multiply, Divide...)" -> "Basic Calculator II"
+        clean_title = re.sub(r'\s*\([^)]*\)', '', extracted_t).strip()
+        
+        sorted_catalog = sorted(CANONICAL_DSA_CATALOG.items(), key=lambda item: len(item[0]), reverse=True)
+        for key, p in sorted_catalog:
+            p_t = p["title"].lower()
+            if key == extracted_t or p_t == extracted_t or key == clean_title or p_t == clean_title:
                 return p
             for alias in p.get("aliases", []):
-                if alias == extracted_t or alias in extracted_t:
+                if alias == extracted_t or alias == clean_title:
                     return p
 
-    # 3. Match by exact title key or aliases with word-boundary safety
-    for key, p in CANONICAL_DSA_CATALOG.items():
-        if key in clean_q or p["title"].lower() in clean_q:
+    # 3. Match full canonical title in query with word boundaries (longest titles first)
+    sorted_catalog = sorted(CANONICAL_DSA_CATALOG.items(), key=lambda item: len(item[0]), reverse=True)
+    for key, p in sorted_catalog:
+        if len(key) >= 6 and re.search(rf'\b{re.escape(key)}\b', clean_q):
             return p
-        for alias in p.get("aliases", []):
-            if len(alias) <= 4 or " " not in alias:
-                if re.search(rf'\b{re.escape(alias)}\b', clean_q):
-                    return p
-            elif alias in clean_q:
-                return p
-
-    # 4. Match by function name substring in query
-    if clean_fn:
-        for key, p in CANONICAL_DSA_CATALOG.items():
-            if clean_fn in key or key in clean_fn:
-                return p
+        if len(p["title"]) >= 6 and re.search(rf'\b{re.escape(p["title"].lower())}\b', clean_q):
+            return p
 
     return None
 

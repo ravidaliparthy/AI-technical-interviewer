@@ -88,7 +88,7 @@ def extract_test_cases_from_text(text: str) -> List[Dict[str, Any]]:
     # **Example 1:** \n Input: ... \n Output: ...
     # - Test Case 1: Input: ... \n Output: ...
     pattern1 = re.compile(
-        r'(?:(?:[\*\-\#\d\.\s]*?(?:Test\s*Case|Example)\s*\d*[\*\:\.\s]*)?|^|\n)\s*Input[:\s]+([^\n\r]+)(?:\n|\r\n)\s*Output[:\s]+([^\n\r]+)',
+        r'(?:(?:[\*\-\#\d\.\s]*?(?:Test\s*Case|Example)\s*\d*[\*\:\.\s]*)?|^|\n)\s*(?:[-*]\s*)?Input[:\s]+([^\n\r]+)(?:\n|\r\n)\s*Output[:\s]+([^\n\r]+)',
         re.IGNORECASE
     )
     for m in pattern1.finditer(text):
@@ -108,24 +108,33 @@ def extract_test_cases_from_text(text: str) -> List[Dict[str, Any]]:
 
     # Pattern 2: Single line test cases with arrow or Output:
     # e.g. - **Test Case 1**: Input: nums=[2,7,11,15], target=9 ➔ Output: [0, 1]
-    # e.g. Input: x=2, y=3 -> Output: 5
+    # e.g. - `nums = [4,5,6,7,0,1,2], target = 0` ➔ Output: `4`
+    # e.g. - `s = "III"` ➔ `3`
+    # e.g. 1. nums = [1, 2, 3], k = 2 -> Output: 5
     if not tests:
         lines = text.splitlines()
         for line in lines:
             line_clean = line.strip()
-            if "input:" in line_clean.lower() and any(sep in line_clean for sep in ["➔", "->", "=>", "Output:", "output:"]):
-                m = re.search(r'Input[:\s]+(.+?)\s*(?:➔|->|=>|\bOutput:)\s*(?:Output[:\s]+)?([^\n\r]+)', line_clean, re.IGNORECASE)
-                if m:
-                    in_raw = m.group(1).strip()
-                    out_raw = m.group(2).strip()
-                    out_clean = re.sub(r'\s*(?:Explanation|Note|Because|Where|\/\/).*$', '', out_raw, flags=re.IGNORECASE).strip()
+            if any(sep in line_clean for sep in ["➔", "->", "=>"]) and ("=" in line_clean or "input:" in line_clean.lower()):
+                parts = re.split(r'\s*(?:➔|->|=>)\s*', line_clean, maxsplit=1)
+                if len(parts) == 2:
+                    in_raw = parts[0]
+                    # Strip bullet points, numbers, and 'Input:' prefix
+                    in_raw = re.sub(r'^\s*(?:[-*#]|\d+[\.:])\s*', '', in_raw)
+                    in_raw = re.sub(r'^\s*Input[:\s]+', '', in_raw, flags=re.IGNORECASE)
+                    in_raw = in_raw.strip('` \t')
+
+                    out_raw = parts[1]
+                    out_raw = re.sub(r'^\s*Output[:\s]+', '', out_raw, flags=re.IGNORECASE)
+                    out_clean = re.sub(r'\s*(?:Explanation|Note|Because|Where|\/\/).*$', '', out_raw, flags=re.IGNORECASE).strip('` \t')
+
                     args = parse_input_arguments(in_raw)
                     expected = parse_expected_output(out_clean)
                     if args is not None:
                         tests.append({
                             "args": args,
                             "expected": expected,
-                            "desc": in_raw.replace('`', '').strip()
+                            "desc": in_raw
                         })
 
     if not tests and get_canonical_tests:
@@ -446,11 +455,92 @@ def __run_harness():
         varnames = getattr(fn, '__code__', None).co_varnames[:arg_count] if hasattr(fn, '__code__') else []
         varnames_lower = [v.lower() for v in varnames]
 
-        if any(v in varnames_lower for v in ['numcourses', 'num_courses']) or 'prerequisites' in varnames_lower:
+        if arg_count == 2:
+            p1 = varnames[0] if len(varnames) > 0 else "param1"
+            p2 = varnames[1] if len(varnames) > 1 else "param2"
+            if ('nums' in varnames_lower or 'arr' in varnames_lower) and 'k' in varnames_lower:
+                tests = [
+                    {{"args": ([2, 1, 5, 1, 3, 2], 3), "expected": 9, "desc": f"{{p1}}=[2, 1, 5, 1, 3, 2], {{p2}}=3"}},
+                    {{"args": ([2, 3, 4, 1, 5], 2), "expected": 7, "desc": f"{{p1}}=[2, 3, 4, 1, 5], {{p2}}=2"}},
+                    {{"args": ([1, -2, 3, -1, 5], 4), "expected": 5, "desc": f"{{p1}}=[1, -2, 3, -1, 5], {{p2}}=4"}}
+                ]
+            elif ('arr' in varnames_lower or 'nums' in varnames_lower) and 'target' in varnames_lower:
+                if "greater" in fname_lower or "index" in fname_lower or "greater" in p_lower:
+                    tests = [
+                        {{"args": ([1, 2, 4, 4, 5, 7], 4), "expected": 4, "desc": f"{{p1}}=[1, 2, 4, 4, 5, 7], {{p2}}=4"}},
+                        {{"args": ([2, 3, 5, 8, 10], 8), "expected": 4, "desc": f"{{p1}}=[2, 3, 5, 8, 10], {{p2}}=8"}},
+                        {{"args": ([1, 2, 3], 5), "expected": -1, "desc": f"{{p1}}=[1, 2, 3], {{p2}}=5"}}
+                    ]
+                else:
+                    tests = [
+                        {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": f"{{p1}}=[2,7,11,15], {{p2}}=9", "is_indices": True}},
+                        {{"args": ([3, 2, 4], 6), "expected": [1, 2], "desc": f"{{p1}}=[3,2,4], {{p2}}=6", "is_indices": True}}
+                    ]
+            elif any(v in varnames_lower for v in ['numcourses', 'num_courses']) or 'prerequisites' in varnames_lower:
+                tests = [
+                    {{"args": (2, [[1, 0]]), "expected": True, "desc": f"{{p1}}=2, {{p2}}=[[1,0]]"}},
+                    {{"args": (2, [[1, 0], [0, 1]]), "expected": False, "desc": f"{{p1}}=2, {{p2}}=[[1,0],[0,1]]"}},
+                    {{"args": (4, [[1, 0], [2, 1], [3, 2]]), "expected": True, "desc": f"{{p1}}=4, {{p2}}=[[1,0],[2,1],[3,2]]"}}
+                ]
+            elif ('coins' in varnames_lower and 'amount' in varnames_lower) or ('coins' in varnames_lower):
+                tests = [
+                    {{"args": ([1, 2, 5], 11), "expected": 3, "desc": f"{{p1}}=[1,2,5], {{p2}}=11"}},
+                    {{"args": ([2], 3), "expected": -1, "desc": f"{{p1}}=[2], {{p2}}=3"}}
+                ]
+            elif 'n' in varnames_lower and 'k' in varnames_lower:
+                tests = [
+                    {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": f"{{p1}}=4, {{p2}}=2", "is_nested_set": True}},
+                    {{"args": (1, 1), "expected": [[1]], "desc": f"{{p1}}=1, {{p2}}=1", "is_nested_set": True}}
+                ]
+            elif 's' in varnames_lower and 't' in varnames_lower:
+                tests = [
+                    {{"args": ("anagram", "nagaram"), "expected": True, "desc": f"{{p1}}='anagram', {{p2}}='nagaram'"}},
+                    {{"args": ("rat", "car"), "expected": False, "desc": f"{{p1}}='rat', {{p2}}='car'"}}
+                ]
+            elif ('arr' in varnames_lower and 'n' in varnames_lower):
+                tests = [
+                    {{"args": ([3, 7, 1, 2, 8, 4, 5, 6], 9), "expected": 9, "desc": f"{{p1}}=[3, 7, 1, 2, 8, 4, 5, 6], {{p2}}=9"}},
+                    {{"args": ([1, 2, 4, 5, 6], 6), "expected": 3, "desc": f"{{p1}}=[1, 2, 4, 5, 6], {{p2}}=6"}},
+                    {{"args": ([], 1), "expected": 1, "desc": f"{{p1}}=[], {{p2}}=1"}}
+                ]
+            elif ('n' in varnames_lower or 'length' in varnames_lower) and any(v in varnames_lower for v in ['operations', 'updates', 'queries']):
+                tests = [
+                    {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": f"{{p1}}=5, {{p2}}=[[1,3,2],[2,4,3]]"}},
+                    {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": f"{{p1}}=3, {{p2}}=[[0,2,1]]"}}
+                ]
+            else:
+                p1_is_int = p1 in ['n', 'k', 'target', 'amount', 'val', 'size', 'len', 'length']
+                p2_is_int = p2 in ['n', 'k', 'target', 'amount', 'val', 'size', 'len', 'length']
+                if p1_is_int and not p2_is_int:
+                    tests = [
+                        {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": f"{{p1}}=5, {{p2}}=[[1,3,2],[2,4,3]]"}},
+                        {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": f"{{p1}}=3, {{p2}}=[[0,2,1]]"}}
+                    ]
+                elif not p1_is_int and p2_is_int:
+                    code_lower = {repr(code.lower())}
+                    is_bool_code = any(k in code_lower for k in ["return true", "return false", "bool", "seen = set", "set()"])
+                    is_bool_prob = any(k in p_lower for k in ["true", "false", "pair", "exist", "find pair", "boolean"])
+                    if is_bool_code or is_bool_prob or "pair" in fname_lower or "has" in fname_lower or "is" in fname_lower:
+                        tests = [
+                            {{"args": ([1, 2, 3, 4, 6], 8), "expected": True, "desc": f"{{p1}}=[1, 2, 3, 4, 6], {{p2}}=8"}},
+                            {{"args": ([2, 5, 8, 11], 20), "expected": False, "desc": f"{{p1}}=[2, 5, 8, 11], {{p2}}=20"}},
+                            {{"args": ([-3, 0, 1, 4, 5], 1), "expected": True, "desc": f"{{p1}}=[-3, 0, 1, 4, 5], {{p2}}=1"}}
+                        ]
+                    else:
+                        tests = [
+                            {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": f"{{p1}}=[2,7,11,15], {{p2}}=9", "is_indices": True}}
+                        ]
+                elif p1_is_int and p2_is_int:
+                    tests = [
+                        {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": f"{{p1}}=4, {{p2}}=2", "is_nested_set": True}}
+                    ]
+                else:
+                    tests = [
+                        {{"args": ("anagram", "nagaram"), "expected": True, "desc": f"{{p1}}='anagram', {{p2}}='nagaram'"}}
+                    ]
+        elif arg_count >= 3:
             tests = [
-                {{"args": (2, [[1, 0]]), "expected": True, "desc": "numCourses=2, prerequisites=[[1,0]]"}},
-                {{"args": (2, [[1, 0], [0, 1]]), "expected": False, "desc": "numCourses=2, prerequisites=[[1,0],[0,1]]"}},
-                {{"args": (4, [[1, 0], [2, 1], [3, 2]]), "expected": True, "desc": "numCourses=4, prerequisites=[[1,0],[2,1],[3,2]]"}}
+                {{"args": tuple([1] * arg_count), "expected": 1, "desc": f"Multi-argument test ({{arg_count}} args)"}}
             ]
         elif 'grid' in varnames_lower or 'matrix' in varnames_lower:
             tests = [
@@ -460,29 +550,9 @@ def __run_harness():
             tests = [
                 {{"args": ([[1, 3], [2, 6], [8, 10]],), "expected": [[1, 6], [8, 10]], "desc": "intervals=[[1,3],[2,6],[8,10]]"}}
             ]
-        elif ('coins' in varnames_lower and 'amount' in varnames_lower) or ('coins' in varnames_lower):
-            tests = [
-                {{"args": ([1, 2, 5], 11), "expected": 3, "desc": "coins=[1,2,5], amount=11"}},
-                {{"args": ([2], 3), "expected": -1, "desc": "coins=[2], amount=3"}}
-            ]
         elif 'height' in varnames_lower or 'heights' in varnames_lower:
             tests = [
                 {{"args": ([1, 8, 6, 2, 5, 4, 8, 3, 7],), "expected": 49, "desc": "height=[1,8,6,2,5,4,8,3,7]"}}
-            ]
-        elif 'nums' in varnames_lower and 'target' in varnames_lower:
-            tests = [
-                {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": "nums=[2,7,11,15], target=9", "is_indices": True}},
-                {{"args": ([3, 2, 4], 6), "expected": [1, 2], "desc": "nums=[3,2,4], target=6", "is_indices": True}}
-            ]
-        elif 'n' in varnames_lower and 'k' in varnames_lower:
-            tests = [
-                {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": "n=4, k=2", "is_nested_set": True}},
-                {{"args": (1, 1), "expected": [[1]], "desc": "n=1, k=1", "is_nested_set": True}}
-            ]
-        elif 's' in varnames_lower and 't' in varnames_lower:
-            tests = [
-                {{"args": ("anagram", "nagaram"), "expected": True, "desc": "s='anagram', t='nagaram'"}},
-                {{"args": ("rat", "car"), "expected": False, "desc": "s='rat', t='car'"}}
             ]
         elif 's' in varnames_lower:
             tests = [
@@ -490,19 +560,14 @@ def __run_harness():
                 {{"args": ("racecar",), "expected": True, "desc": "s='racecar'"}},
                 {{"args": ("hello",), "expected": False, "desc": "s='hello'"}}
             ]
-        elif ('n' in varnames_lower or 'length' in varnames_lower) and any(v in varnames_lower for v in ['operations', 'updates', 'queries']):
-            tests = [
-                {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": "n=5, operations=[[1,3,2],[2,4,3]]"}},
-                {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": "n=3, operations=[[0,2,1]]"}}
-            ]
-        elif ('arr' in varnames_lower and 'n' in varnames_lower) or 'arr' in varnames_lower:
-            tests = [
-                {{"args": ([3, 7, 1, 2, 8, 4, 5, 6], 9), "expected": 9, "desc": "arr=[3, 7, 1, 2, 8, 4, 5, 6], n=9"}},
-                {{"args": ([1, 2, 4, 5, 6], 6), "expected": 3, "desc": "arr=[1, 2, 4, 5, 6], n=6"}},
-                {{"args": ([], 1), "expected": 1, "desc": "arr=[], n=1"}}
-            ]
-        elif 'nums' in varnames_lower:
-            if "duplicate" in p_lower or "duplicate" in fname_lower:
+        elif 'nums' in varnames_lower or 'arr' in varnames_lower:
+            if "frequent" in fname_lower or "frequent" in p_lower:
+                tests = [
+                    {{"args": ([1, 3, 2, 1, 4, 1],), "expected": 1, "desc": "nums=[1, 3, 2, 1, 4, 1]"}},
+                    {{"args": ([5, 5, 4, 4, 3],), "expected": 4, "desc": "nums=[5, 5, 4, 4, 3]"}},
+                    {{"args": ([7],), "expected": 7, "desc": "nums=[7]"}}
+                ]
+            elif "duplicate" in p_lower or "duplicate" in fname_lower:
                 tests = [
                     {{"args": ([1, 3, 4, 2, 2],), "expected": 2, "desc": "nums=[1, 3, 4, 2, 2]"}},
                     {{"args": ([3, 1, 3, 4, 2],), "expected": 3, "desc": "nums=[3, 1, 3, 4, 2]"}}
@@ -523,42 +588,6 @@ def __run_harness():
                     {{"args": ([1],), "expected": 1, "desc": "nums=[1]"}},
                     {{"args": ([5, 4, -1, 7, 8],), "expected": 23, "desc": "nums=[5,4,-1,7,8]"}}
                 ]
-        elif arg_count == 2:
-            p1 = varnames[0] if len(varnames) > 0 else "param1"
-            p2 = varnames[1] if len(varnames) > 1 else "param2"
-            p1_is_int = p1 in ['n', 'k', 'target', 'amount', 'val', 'size', 'len', 'length']
-            p2_is_int = p2 in ['n', 'k', 'target', 'amount', 'val', 'size', 'len', 'length']
-            if p1_is_int and not p2_is_int:
-                tests = [
-                    {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": f"{{p1}}=5, {{p2}}=[[1,3,2],[2,4,3]]"}},
-                    {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": f"{{p1}}=3, {{p2}}=[[0,2,1]]"}}
-                ]
-            elif not p1_is_int and p2_is_int:
-                code_lower = {repr(code.lower())}
-                is_bool_code = any(k in code_lower for k in ["return true", "return false", "bool", "seen = set", "set()"])
-                is_bool_prob = any(k in p_lower for k in ["true", "false", "pair", "exist", "find pair", "boolean"])
-                if is_bool_code or is_bool_prob or "pair" in fname_lower or "has" in fname_lower or "is" in fname_lower:
-                    tests = [
-                        {{"args": ([1, 2, 3, 4, 6], 8), "expected": True, "desc": f"{{p1}}=[1, 2, 3, 4, 6], {{p2}}=8"}},
-                        {{"args": ([2, 5, 8, 11], 20), "expected": False, "desc": f"{{p1}}=[2, 5, 8, 11], {{p2}}=20"}},
-                        {{"args": ([-3, 0, 1, 4, 5], 1), "expected": True, "desc": f"{{p1}}=[-3, 0, 1, 4, 5], {{p2}}=1"}}
-                    ]
-                else:
-                    tests = [
-                        {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": f"{{p1}}=[2,7,11,15], {{p2}}=9", "is_indices": True}}
-                    ]
-            elif p1_is_int and p2_is_int:
-                tests = [
-                    {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": f"{{p1}}=4, {{p2}}=2", "is_nested_set": True}}
-                ]
-            else:
-                tests = [
-                    {{"args": ("anagram", "nagaram"), "expected": True, "desc": f"{{p1}}='anagram', {{p2}}='nagaram'"}}
-                ]
-        elif arg_count >= 3:
-            tests = [
-                {{"args": tuple([1] * arg_count), "expected": 1, "desc": f"Multi-argument test ({{arg_count}} args)"}}
-            ]
         elif 'n' in varnames or 'k' in varnames:
             tests = [
                 {{"args": (5,), "expected": 5, "desc": "n=5"}}
@@ -574,7 +603,18 @@ def __run_harness():
 
     for idx, t in enumerate(tests, start=1):
         try:
-            actual = fn(*t["args"])
+            call_args = t["args"]
+            if isinstance(call_args, list):
+                call_args = tuple(call_args)
+            elif not isinstance(call_args, tuple):
+                call_args = (call_args,)
+            
+            target_arg_count = getattr(fn, '__code__', None).co_argcount if hasattr(fn, '__code__') else None
+            if target_arg_count is not None and len(call_args) != target_arg_count:
+                if len(call_args) == 1 and isinstance(call_args[0], (list, tuple)) and len(call_args[0]) == target_arg_count:
+                    call_args = tuple(call_args[0])
+
+            actual = fn(*call_args)
             expected = t.get("expected")
             desc = t.get("desc", f"Test Case {{idx}}")
             
