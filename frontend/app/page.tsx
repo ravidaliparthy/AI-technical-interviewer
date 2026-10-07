@@ -227,6 +227,8 @@ export default function Home() {
   const [codeRunResult, setCodeRunResult] = useState<CodeRunResult | null>(null);
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [customInput, setCustomInput] = useState("");
+  const [activeTestCases, setActiveTestCases] = useState<any[]>([]);
+  const [activeProblemText, setActiveProblemText] = useState<string>("");
 
   // Hints state keyed by message index
   const [hintsMap, setHintsMap] = useState<Record<number, QuestionHint>>({});
@@ -483,6 +485,8 @@ export default function Home() {
     setCurrentProblemTitle(null);
     setDynamicPlaceholder(null);
     setDynamicQuickChips(null);
+    setActiveTestCases([]);
+    setActiveProblemText("");
     setMobileActiveTab("chat");
 
     // Preliminary editor visibility check (refined dynamically by backend response)
@@ -524,6 +528,13 @@ export default function Home() {
       // Auto-adapt Code Editor visibility: Hide for non-DSA / conceptual, show for coding problems
       if (data.is_coding_problem !== undefined) {
         setShowCodeEditor(Boolean(data.is_coding_problem));
+      }
+
+      if (data.is_coding_problem) {
+        if (data.test_cases && data.test_cases.length > 0) {
+          setActiveTestCases(data.test_cases);
+        }
+        setActiveProblemText(data.problem_text || data.message);
       }
 
       // Populate dynamic templates and parameters tailored to the specific question
@@ -573,7 +584,14 @@ export default function Home() {
     }
 
     setIsRunningCode(true);
-    const latestInterviewerMsg = conversation.filter((m) => m.role === "interviewer").slice(-1)[0]?.content || topic;
+    let effectiveProblem = activeProblemText;
+    if (!effectiveProblem) {
+      const probMsg = conversation
+        .slice()
+        .reverse()
+        .find((m) => m.role === "interviewer" && (m.content.includes("Input:") || m.content.includes("Problem:")));
+      effectiveProblem = probMsg ? probMsg.content : (currentProblemTitle || topic);
+    }
 
     try {
       const res = await fetch(`${BACKEND_BASE}/api/interview/run-code`, {
@@ -582,8 +600,9 @@ export default function Home() {
         body: JSON.stringify({
           code: codeSnippet,
           language: codeLanguage,
-          problem: latestInterviewerMsg || currentProblemTitle,
+          problem: effectiveProblem,
           custom_input: customInput.trim() || null,
+          test_cases: activeTestCases && activeTestCases.length > 0 ? activeTestCases : undefined,
         }),
       });
 
@@ -626,7 +645,14 @@ export default function Home() {
 
     setIsAnalyzingCode(true);
 
-    const latestInterviewerMsg = conversation.filter((m) => m.role === "interviewer").slice(-1)[0]?.content || topic;
+    let effectiveProblem = activeProblemText;
+    if (!effectiveProblem) {
+      const probMsg = conversation
+        .slice()
+        .reverse()
+        .find((m) => m.role === "interviewer" && (m.content.includes("Input:") || m.content.includes("Problem:")));
+      effectiveProblem = probMsg ? probMsg.content : (currentProblemTitle || topic);
+    }
 
     try {
       const res = await fetch(`${BACKEND_BASE}/api/interview/analyze-code`, {
@@ -634,7 +660,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: codeSnippet,
-          problem: latestInterviewerMsg,
+          problem: effectiveProblem,
           language: codeLanguage,
           company: selectedCompany || null,
           difficulty,
@@ -832,6 +858,12 @@ export default function Home() {
       // Dynamically adapt editor visibility and question parameters
       if (data.is_coding_problem !== undefined) {
         setShowCodeEditor(Boolean(data.is_coding_problem));
+      }
+      if (data.is_coding_problem) {
+        if (data.test_cases && data.test_cases.length > 0) {
+          setActiveTestCases(data.test_cases);
+        }
+        setActiveProblemText(data.problem_text || data.message);
       }
       if (data.starter_snippets) {
         setStarterSnippets(data.starter_snippets);
@@ -2757,10 +2789,41 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                           )}
 
                           {/* Custom Test Input Box */}
-                          <div className="space-y-1 pt-2 border-t border-slate-800/80 font-sans">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              Custom Test Input (Optional):
-                            </label>
+                          <div className="space-y-1.5 pt-2 border-t border-slate-800/80 font-sans">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Custom Test Input (Optional):
+                              </label>
+                              {activeTestCases && activeTestCases.length > 0 && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] text-slate-400">Cases:</span>
+                                  {activeTestCases.map((tc, idx) => (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onClick={() => setCustomInput(tc.desc || "")}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer ${
+                                        customInput === tc.desc
+                                          ? "bg-indigo-600 text-white font-bold shadow-sm"
+                                          : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                      }`}
+                                      title={`Load Test Case #${idx + 1}: ${tc.desc}`}
+                                    >
+                                      Case {idx + 1}
+                                    </button>
+                                  ))}
+                                  {customInput && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setCustomInput("")}
+                                      className="text-[10px] text-slate-400 hover:text-white underline cursor-pointer ml-1"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                             <div className="flex gap-2">
                               <input
                                 type="text"

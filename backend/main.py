@@ -18,7 +18,7 @@ from companies import (
     COMPANY_PROFILES
 )
 from code_analyzer import analyze_code_loopholes
-from code_runner import execute_candidate_code, _is_empty_or_placeholder
+from code_runner import execute_candidate_code, _is_empty_or_placeholder, extract_test_cases_from_text
 from question_banks import EXPANDED_QUESTION_BANKS
 from problem_templates import (
     generate_starter_snippets,
@@ -200,6 +200,8 @@ class InterviewResponse(BaseModel):
     starter_snippets: Optional[Dict[str, str]] = None
     placeholder: Optional[str] = None
     quick_chips: Optional[List[str]] = None
+    test_cases: Optional[List[Dict[str, Any]]] = None
+    problem_text: Optional[str] = None
 
 class CodeAnalysisRequest(BaseModel):
     code: str = Field(..., description="Source code to analyze for bugs, loopholes, and Big-O")
@@ -226,6 +228,7 @@ class RunCodeRequest(BaseModel):
     language: str = Field("python", description="Programming language (python, javascript, typescript, cpp, java, go, rust)")
     problem: Optional[str] = Field("", description="Problem name or title context")
     custom_input: Optional[str] = Field(None, description="Optional custom test input")
+    test_cases: Optional[List[Dict[str, Any]]] = Field(None, description="Structured test cases")
 
 class RunCodeResponse(BaseModel):
     status: str
@@ -962,9 +965,11 @@ def build_interview_response_metadata(question_text: str, topic: str = "") -> Di
                 snippets = None
 
             prob_title = extract_problem_title(question_text, topic)
+            extracted_tests = extract_test_cases_from_text(question_text)
             placeholder = "State your approach, Big-O Time & Space complexity, and write your solution in the editor..."
             quick_chips = ["+ O(N) / O(1)", "+ O(N log N) / O(N)", "+ O(log N) / O(1)", "+ O(V + E) / O(V)", "+ Two Pointers", "+ Hash Map"]
         else:
+            extracted_tests = []
             norm_t = (topic or "").lower()
             if "python" in norm_t:
                 placeholder = "Explain your design, Pythonic idioms, decorator mechanics, or trade-offs..."
@@ -984,7 +989,9 @@ def build_interview_response_metadata(question_text: str, topic: str = "") -> Di
             "problem_title": prob_title,
             "starter_snippets": snippets,
             "placeholder": placeholder,
-            "quick_chips": quick_chips
+            "quick_chips": quick_chips,
+            "test_cases": extracted_tests if is_coding else None,
+            "problem_text": question_text if is_coding else None
         }
     except Exception as ex:
         logger.error(f"Error in build_interview_response_metadata: {ex}", exc_info=True)
@@ -993,7 +1000,9 @@ def build_interview_response_metadata(question_text: str, topic: str = "") -> Di
             "problem_title": "Algorithmic Challenge",
             "starter_snippets": None,
             "placeholder": "Type your solution...",
-            "quick_chips": None
+            "quick_chips": None,
+            "test_cases": None,
+            "problem_text": question_text
         }
 
 
@@ -2254,7 +2263,8 @@ async def run_code(req: RunCodeRequest):
         code=req.code,
         language=req.language,
         problem_title=req.problem or "",
-        custom_input=req.custom_input
+        custom_input=req.custom_input,
+        test_cases=req.test_cases
     )
     return RunCodeResponse(
         status=res["status"],
