@@ -23,7 +23,8 @@ from question_banks import EXPANDED_QUESTION_BANKS
 from problem_templates import (
     generate_starter_snippets,
     is_coding_problem,
-    parse_question_signature
+    parse_question_signature,
+    extract_problem_title
 )
 
 # Load environment variables
@@ -644,7 +645,8 @@ def is_dsa_topic(topic: str) -> bool:
         return False
     dsa_keywords = [
         "dsa", "leetcode", "data structure", "data structures",
-        "competitive programming", "binary tree", "graph algorithm", "dynamic programming"
+        "competitive programming", "binary tree", "graph algorithm", "dynamic programming",
+        "problem solving", "problem-solving", "coding interview", "algorithm", "algorithms"
     ]
     if any(k in norm for k in dsa_keywords):
         return True
@@ -652,6 +654,47 @@ def is_dsa_topic(topic: str) -> bool:
     if "dsa" in words or "algo" in words or "algorithms" in words or "algorithm" in words:
         return True
     return False
+
+ALL_DSA_SUBDOMAINS = [
+    "Arrays and Two Pointers",
+    "Hash Maps and Frequency Counters",
+    "Sliding Window and Subarrays",
+    "Binary Search and Monotonic Invariants",
+    "Linked Lists and Fast/Slow Pointers",
+    "Stacks and Monotonic Queues",
+    "Binary Trees and Depth-First Search",
+    "Breadth-First Search and Matrices",
+    "Dynamic Programming and Memoization",
+    "Greedy Algorithms and Interval Scheduling",
+    "Backtracking, Subsets, and Combinations",
+    "Heaps and Priority Queues",
+    "Prefix Sums and Difference Arrays",
+    "String Matching and Palindromes",
+    "Bit Manipulation and Bitmasks",
+    "Graph Algorithms and Topological Sort"
+]
+
+def get_next_dsa_subdomain(conversation_history: List[Any], topic: str = "") -> str:
+    """
+    Selects a fresh, unvisited DSA subdomain across the conversation so that questions
+    never repeat and naturally jumble across the entire spectrum of DSA!
+    """
+    import random
+    combined_text = " ".join(
+        (m.content if hasattr(m, "content") else str(getattr(m, "content", "")))
+        for m in conversation_history
+    ).lower()
+
+    unvisited = []
+    for sub in ALL_DSA_SUBDOMAINS:
+        first_word = sub.lower().split()[0]
+        if first_word not in combined_text:
+            unvisited.append(sub)
+
+    if not unvisited:
+        return random.choice(ALL_DSA_SUBDOMAINS)
+    return random.choice(unvisited)
+
 
 def get_questions_for_topic(topic: str, difficulty: str, company: Optional[str] = None, count: int = 5) -> List[str]:
     norm = (topic or "").lower().strip()
@@ -906,43 +949,52 @@ def build_interview_response_metadata(question_text: str, topic: str = "") -> Di
     3. Topic-adaptive candidate input placeholder
     4. Relevant quick chips (e.g. Big-O for DSA, pythonic keywords for Python, ML metrics for ML)
     """
-    is_coding = is_coding_problem(question_text, topic)
-    snippets = None
-    prob_title = None
+    try:
+        is_coding = is_coding_problem(question_text, topic)
+        snippets = None
+        prob_title = None
 
-    if is_coding:
-        snippets = generate_starter_snippets(question_text)
-        title_match = re.search(r"###\s*Problem:\s*([^\n\r]+)", question_text, re.IGNORECASE)
-        if title_match:
-            prob_title = title_match.group(1).strip()
+        if is_coding:
+            try:
+                snippets = generate_starter_snippets(question_text)
+            except Exception as e:
+                logger.warning(f"generate_starter_snippets warning: {e}")
+                snippets = None
+
+            prob_title = extract_problem_title(question_text, topic)
+            placeholder = "State your approach, Big-O Time & Space complexity, and write your solution in the editor..."
+            quick_chips = ["+ O(N) / O(1)", "+ O(N log N) / O(N)", "+ O(log N) / O(1)", "+ O(V + E) / O(V)", "+ Two Pointers", "+ Hash Map"]
         else:
-            first_line = question_text.strip().split("\n")[0]
-            prob_title = first_line[:40]
+            norm_t = (topic or "").lower()
+            if "python" in norm_t:
+                placeholder = "Explain your design, Pythonic idioms, decorator mechanics, or trade-offs..."
+                quick_chips = ["+ functools.wraps", "+ *args, **kwargs", "+ time.perf_counter()", "+ Generator / Yield", "+ Context Manager"]
+            elif is_ml_topic(topic):
+                placeholder = "Explain model formulation, loss formulation, validation strategy, or trade-offs..."
+                quick_chips = ["+ Bias-Variance Tradeoff", "+ Cross-Entropy Loss", "+ Regularization (L1/L2)", "+ Data Leakage", "+ ROC-AUC / F1"]
+            elif is_sys_topic(topic):
+                placeholder = "Explain high-level architecture, data models, scalability bottlenecks, and trade-offs..."
+                quick_chips = ["+ Horizontal Scaling", "+ Consistent Hashing", "+ Read-Through Cache", "+ Database Sharding", "+ Kafka / MQ"]
+            else:
+                placeholder = "Type your structured explanation, design considerations, and reasoning..."
+                quick_chips = ["+ Core Mechanics", "+ Edge Cases", "+ Trade-offs", "+ Production Reliability"]
 
-        placeholder = "State your approach, Big-O Time & Space complexity, and write your solution in the editor..."
-        quick_chips = ["+ O(N) / O(1)", "+ O(N log N) / O(N)", "+ O(log N) / O(1)", "+ O(V + E) / O(V)", "+ Two Pointers", "+ Hash Map"]
-    else:
-        norm_t = (topic or "").lower()
-        if "python" in norm_t:
-            placeholder = "Explain your design, Pythonic idioms, decorator mechanics, or trade-offs..."
-            quick_chips = ["+ functools.wraps", "+ *args, **kwargs", "+ time.perf_counter()", "+ Generator / Yield", "+ Context Manager"]
-        elif is_ml_topic(topic):
-            placeholder = "Explain model formulation, loss formulation, validation strategy, or trade-offs..."
-            quick_chips = ["+ Bias-Variance Tradeoff", "+ Cross-Entropy Loss", "+ Regularization (L1/L2)", "+ Data Leakage", "+ ROC-AUC / F1"]
-        elif is_sys_topic(topic):
-            placeholder = "Explain high-level architecture, data models, scalability bottlenecks, and trade-offs..."
-            quick_chips = ["+ Horizontal Scaling", "+ Consistent Hashing", "+ Read-Through Cache", "+ Database Sharding", "+ Kafka / MQ"]
-        else:
-            placeholder = "Type your structured explanation, design considerations, and reasoning..."
-            quick_chips = ["+ Core Mechanics", "+ Edge Cases", "+ Trade-offs", "+ Production Reliability"]
-
-    return {
-        "is_coding_problem": is_coding,
-        "problem_title": prob_title,
-        "starter_snippets": snippets,
-        "placeholder": placeholder,
-        "quick_chips": quick_chips
-    }
+        return {
+            "is_coding_problem": is_coding,
+            "problem_title": prob_title,
+            "starter_snippets": snippets,
+            "placeholder": placeholder,
+            "quick_chips": quick_chips
+        }
+    except Exception as ex:
+        logger.error(f"Error in build_interview_response_metadata: {ex}", exc_info=True)
+        return {
+            "is_coding_problem": is_dsa_topic(topic),
+            "problem_title": "Algorithmic Challenge",
+            "starter_snippets": None,
+            "placeholder": "Type your solution...",
+            "quick_chips": None
+        }
 
 
 def run_builtin_start(
@@ -1545,8 +1597,11 @@ DO NOT ask generic textbook questions. Cross-examine the candidate directly on w
     if is_dsa:
         domain_rules = """
 SPECIAL DSA CODING REQUIREMENTS:
-1. Every algorithmic problem MUST include ALL 3 sections:
-   - Problem Description
+1. Every algorithmic problem MUST clearly state its title at the very top using the exact format:
+   ### Problem: <Problem Title>
+   (For example: ### Problem: Generate Combinations, or ### Problem: Two Sum, or ### Problem: Trapping Rain Water)
+2. Every algorithmic problem MUST include ALL 3 sections:
+   - Problem Description (Explain the task, input variables, and expected output clearly)
    - Test Cases (MANDATORY: You MUST provide 2 or 3 numbered test cases formatted with:
      1. Input: <param> = <val>, ...
         Output: <expected>
@@ -1555,8 +1610,9 @@ SPECIAL DSA CODING REQUIREMENTS:
         Output: ...)
    - Constraints
    DO NOT skip the Test Cases section.
-2. ALWAYS evaluate whether the candidate declared both Time Complexity ($O(...)$) and Auxiliary Space Complexity ($O(...)$).
-3. If they omitted complexity analysis or provided an unoptimized solution, probe for it directly without revealing the answer.
+3. Explicitly state the function signature if helpful: e.g. `fn_name(param1, param2)`.
+4. ALWAYS evaluate whether the candidate declared both Time Complexity ($O(...)$) and Auxiliary Space Complexity ($O(...)$).
+5. If they omitted complexity analysis or provided an unoptimized solution, probe for it directly without revealing the answer.
 """
     elif is_ml:
         domain_rules = """
@@ -1916,11 +1972,12 @@ async def start_interview(req: StartInterviewRequest):
 
             focus_instruction = ""
             if is_dsa_topic(effective_topic):
-                chosen_sub = random.choice(dsa_subdomains)
+                chosen_sub = get_next_dsa_subdomain([], effective_topic)
                 focus_instruction = (
-                    f" For this interview session (Session ID: {session_id}), formulate a challenge focusing on '{chosen_sub}'. "
+                    f" For this interview session (Session ID: {session_id}), formulate an algorithmic challenge focusing on '{chosen_sub}'. "
                     f"Ensure the question is a distinct {req.difficulty}-level problem from this domain. "
-                    f"Do NOT default to standard textbook problems like Missing Number or Two Sum if another interesting problem from {chosen_sub} can be presented."
+                    f"Format the problem title prominently at the very top: ### Problem: <Problem Title>. "
+                    f"Do NOT default to standard textbook problems like Missing Number or Two Sum if another interesting problem from '{chosen_sub}' can be presented."
                 )
             elif is_ml_topic(effective_topic):
                 chosen_sub = random.choice(ml_subdomains)
@@ -1981,11 +2038,28 @@ async def submit_answer(req: SubmitAnswerRequest):
             code_ctx = f"\n\nCandidate's Submitted Code ({req.code_language}):\n{req.code_snippet}" if req.code_snippet else ""
             company_ctx = f"\nTarget Company: {req.company}" if req.company else ""
             resume_ctx = f"\nResume Active: Yes (evaluate against claimed projects and architectures)." if req.resume_text else ""
+
+            dsa_rotation_ctx = ""
+            if is_dsa_topic(effective_topic) and not req.resume_text:
+                next_sub = get_next_dsa_subdomain(req.conversation, effective_topic)
+                dsa_rotation_ctx = (
+                    f"\n\nDSA SUBDOMAIN ROTATION DIRECTIVE:"
+                    f"\nIf advancing to a new question, switch to an entirely DIFFERENT DSA domain: '{next_sub}'."
+                    f"\nFormulate a fresh, original {req.difficulty}-level problem from '{next_sub}'."
+                    f"\nFormat the problem title prominently at the very top: ### Problem: <Problem Title>."
+                    f"\nInclude all 3 sections: Problem Description, Test Cases (with 2-3 numbered cases: Input, Output, Explanation), and Constraints."
+                    f"\nDo NOT repeat any problem or stay on the same domain as earlier in the conversation!"
+                )
+
+            advance_clause = ""
+            if req.force_advance or (req.code_snippet and len(req.code_snippet.strip()) > 40):
+                advance_clause = "\nDIRECTIVE: The candidate has provided their code / requested advance. Acknowledge concisely in one sentence and advance to the next question now without further probing."
+
             user_msg = (
                 f"Topic: {effective_topic}\nDifficulty: {req.difficulty}{company_ctx}{resume_ctx}\nTarget Questions: {req.total_questions}\n\n"
-                f"Conversation so far:\n{transcript}{code_ctx}\n\n"
-                f"Evaluate the last candidate answer. If it's weak or partial, ask a probing follow-through on this same topic/project before advancing. "
-                f"If strong or already followed up, acknowledge concisely and advance to the next question. "
+                f"Conversation so far:\n{transcript}{code_ctx}{dsa_rotation_ctx}{advance_clause}\n\n"
+                f"Evaluate the last candidate answer. If it's weak or partial (and not advancing), ask a probing follow-through on this same topic/project before advancing. "
+                f"If strong, already followed up, or advancing, acknowledge concisely and advance to the next question. "
                 f"Wrap up if {req.total_questions} questions have been completed."
             )
             data = await call_groq_api(system_prompt, user_msg, api_key_to_use)

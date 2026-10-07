@@ -297,17 +297,196 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
     # 2. Check for explicit function signature declared in text:
     # e.g. "Write a function 'findMissing(arr, n)'" or `findMissing(arr, n)`
     sig_match = re.search(r'(?:function|def|write a function)\s*[`\'"]?([a-zA-Z_]\w*)\s*\(([^)]*)\)[`\'"]?', question_text, re.IGNORECASE)
+def extract_problem_title(question_text: str, topic: str = "") -> str:
+    """
+    Extracts a clean, prominent problem title from any question format:
+    - '### Problem: Generate Combinations' -> 'Generate Combinations'
+    - '**Problem 1 - Two Sum**' -> 'Two Sum'
+    - '**Problem: Longest Substring Without Repeating Characters**'
+    - Matches against canonical catalogue.
+    """
+    if not question_text:
+        return "Algorithmic Challenge"
+
+    # 1. Standard markdown headers or bold Problem: headers
+    patterns = [
+        r'###\s*Problem:\s*([^\n\r]+)',
+        r'##\s*Problem:\s*([^\n\r]+)',
+        r'#\s*Problem:\s*([^\n\r]+)',
+        r'\*\*Problem\s*(?:\d+)?\s*[:–-]?\s*([^*\n\r]+)\*\*',
+        r'Problem\s*(?:\d+)?\s*[:–-]\s*([^\n\r]+)',
+        r'\*\*Title[:\s]+([^*\n\r]+)\*\*',
+        r'Title[:\s]+([^\n\r]+)'
+    ]
+    for pat in patterns:
+        m = re.search(pat, question_text, re.IGNORECASE)
+        if m:
+            raw = m.group(1).strip()
+            # Clean leading numbering like "1. Two Sum"
+            clean = re.sub(r'^\d+[\.\:\-\–\s]+', '', raw)
+            clean = re.sub(r'[`\*_]', '', clean).strip()
+            # Remove trailing colon or extra punctuation
+            clean = clean.rstrip(':.- ')
+            if clean and len(clean) >= 3 and not any(w in clean.lower() for w in ["sure", "hello", "welcome", "let's"]):
+                return clean
+
+    # 2. Check canonical catalogue match
+    q_lower = question_text.lower()
+    for key in CANONICAL_SIGNATURES.keys():
+        if key in q_lower:
+            return " ".join(word.capitalize() for word in key.split())
+
+    # 3. Check for function signature: def fn_name(...)
+    fn_m = re.search(r'(?:def|function)\s+([a-zA-Z_]\w*)\s*\(', question_text)
+    if fn_m:
+        raw_fn = fn_m.group(1)
+        parts = re.findall(r'[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z][a-z]|\b)', raw_fn)
+        if parts:
+            candidate = " ".join(p.capitalize() for p in parts)
+            if candidate.lower() not in ("solve", "solution"):
+                return candidate
+
+    # 4. Fallback: inspect top non-empty lines
+    for line in question_text.splitlines():
+        line = line.strip()
+        if line.startswith("#") or line.startswith("**"):
+            clean = re.sub(r'^[#\*\s\d\.\:\-]+', '', line)
+            clean = re.sub(r'[\*`_]', '', clean).strip()
+            if 3 < len(clean) < 55 and not any(w in clean.lower() for w in ["sure", "hello", "welcome", "let's", "here is"]):
+                return clean
+
+    return "Algorithmic Challenge"
+
+
+def get_param_description(param_name: str, param_type: str, fn_name: str = "") -> str:
+    """Returns an intuitive LeetCode-style input parameter description."""
+    p = param_name.lower()
+    fn = fn_name.lower()
+
+    if p in ("nums", "arr"):
+        if "sorted" in fn or "search" in fn or "binary" in fn:
+            return "Sorted array of integers"
+        elif "matrix" in fn:
+            return "List of integers"
+        return "Array of integers to evaluate"
+    elif p == "target":
+        return "Target integer value to search for or sum toward"
+    elif p == "n":
+        if "combine" in fn or "combination" in fn:
+            return "Upper integer bound representing range [1, n]"
+        elif "climb" in fn or "stair" in fn:
+            return "Total number of steps in staircase"
+        return "Integer limit or size parameter"
+    elif p == "k":
+        if "combine" in fn or "combination" in fn:
+            return "Number of elements in each combination"
+        elif "top" in fn or "largest" in fn or "frequent" in fn:
+            return "Top k elements count threshold"
+        elif "window" in fn:
+            return "Sliding window size parameter"
+        return "Threshold or element count integer k"
+    elif p in ("s", "str"):
+        if "palindrome" in fn:
+            return "Input string to evaluate for palindrome property"
+        elif "parentheses" in fn or "valid" in fn:
+            return "Input string of brackets or characters"
+        return "Input string"
+    elif p == "t":
+        return "Second string for comparison or anagram matching"
+    elif p == "root":
+        return "Root node of binary tree (TreeNode)"
+    elif p == "head":
+        return "Head node of singly-linked list (ListNode)"
+    elif p in ("p", "q"):
+        return f"Target {p.upper()} node in binary tree (TreeNode)"
+    elif p in ("intervals",):
+        return "Collection of [start, end] intervals"
+    elif p in ("matrix",):
+        return "2D grid / matrix of integers"
+    elif p in ("grid",):
+        return "2D grid of characters / values"
+    elif p in ("prices",):
+        return "Array of daily asset prices where prices[i] is the price on day i"
+    elif p in ("height", "heights"):
+        return "Elevation bar heights array"
+    elif p in ("coins",):
+        return "Array of distinct coin denominations"
+    elif p in ("amount",):
+        return "Target total monetary amount"
+    elif p in ("numcourses",):
+        return "Total number of courses labeled from 0 to numCourses - 1"
+    elif p in ("prerequisites",):
+        return "List of prerequisite course pairs [course, prereq]"
+    elif p in ("chars",):
+        return "Array of characters to compress or evaluate"
+    elif p in ("logs",):
+        return "Array of log entries"
+    elif p in ("strs", "words"):
+        return "Array of strings"
+    elif "list" in param_type.lower() or "[]" in param_type:
+        return f"Input collection ({param_type})"
+    elif param_type == "int":
+        return f"Integer input parameter {param_name}"
+    elif param_type == "str":
+        return f"String input {param_name}"
+    elif param_type == "bool":
+        return f"Boolean flag {param_name}"
+    return f"Input parameter {param_name}"
+
+
+def get_return_description(fn_name: str, return_type: str) -> str:
+    """Returns return description for function docstring."""
+    fn = fn_name.lower()
+    if "is" in fn or "can" in fn or "has" in fn or return_type == "bool":
+        return "True if condition is met, False otherwise"
+    elif "twosum" in fn or "two_sum" in fn:
+        return "Indices of the two numbers that add up to target"
+    elif "combine" in fn or "subsets" in fn or "permute" in fn:
+        return "All valid combinations/permutations meeting criteria"
+    elif "search" in fn or "find" in fn:
+        return "Index of found target or result value (-1 if not found)"
+    elif "max" in fn or "min" in fn or "length" in fn or "count" in fn:
+        return "Optimal computed numerical value"
+    elif "reverse" in fn:
+        return "Head node of reversed linked list"
+    return "Computed solution output"
+
+
+def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, str]], str, bool, bool]:
+    """
+    Parses a question and returns:
+    (fn_name, [(param_name, param_type), ...], return_type, needs_tree, needs_list)
+    """
+    q_lower = question_text.lower()
+
+    # 1. Check canonical catalog first
+    for key, data in CANONICAL_SIGNATURES.items():
+        if key in q_lower:
+            return (
+                data["fn"],
+                data["params"],
+                data.get("return_type", "Any"),
+                data.get("needs_tree", False),
+                data.get("needs_list", False)
+            )
+
+    # 2. Check for explicit function signature declared in text:
+    # e.g. "Write a function 'findMissing(arr, n)'" or `findMissing(arr, n)`
+    sig_match = re.search(r'(?:function|def|write a function)\s*[`\'"]?([a-zA-Z_]\w*)\s*\(([^)]*)\)[`\'"]?', question_text, re.IGNORECASE)
     if not sig_match:
         sig_match = re.search(r'`([a-zA-Z_]\w*)\s*\(([^)]*)\)`', question_text)
 
     if sig_match:
-        fn_name = sig_match.group(1).strip()
+        raw_name = sig_match.group(1).strip()
+        fn_name = re.sub(r'[^a-zA-Z0-9_]', '', raw_name)
+        if not fn_name or not fn_name[0].isalpha() and fn_name[0] != '_':
+            fn_name = "solve"
         raw_args = sig_match.group(2).strip()
         if raw_args:
             parsed_params: List[Tuple[str, str]] = []
             for arg in raw_args.split(","):
                 arg_name = arg.strip().split(":")[0].split("=")[0].strip()
-                arg_name = re.sub(r'[`\'"]', '', arg_name)
+                arg_name = re.sub(r'[^a-zA-Z0-9_]', '', arg_name)
                 if arg_name:
                     if arg_name in ("root", "p", "q") and ("tree" in q_lower or "root" in q_lower):
                         t = "TreeNode"
@@ -332,13 +511,14 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
                 return (fn_name, parsed_params, "Any", needs_tree, needs_list)
 
     # 3. Extract title if present: e.g. "### Problem: Name"
-    title_match = re.search(r'###\s*Problem:\s*([^\n\(\:]+)', question_text)
+    raw_title = extract_problem_title(question_text)
     fn_name = "solve"
-    if title_match:
-        raw_title = title_match.group(1).strip()
+    if raw_title and raw_title != "Algorithmic Challenge":
         words = re.sub(r'[^a-zA-Z0-9\s]', '', raw_title).split()
-        if words:
+        if words and words[0].lower() not in ("coding", "problem", "algorithmic"):
             fn_name = words[0].lower() + "".join(w.capitalize() for w in words[1:])
+    if not fn_name or not (fn_name[0].isalpha() or fn_name[0] == '_'):
+        fn_name = "solve"
 
     # 4. Dynamic parameter detection from test cases or text
     params: List[Tuple[str, str]] = []
@@ -392,11 +572,12 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
         else:
             params = [("nums", "List[int]"), ("target", "int")]
 
-    return (fn_name, params, "Any", needs_tree, needs_list)
+    ret_type = "bool" if any(w in fn_name.lower() for w in ["is", "has", "can", "valid"]) else "Any"
+    return (fn_name, params, ret_type, needs_tree, needs_list)
 
 
 def generate_starter_snippets(question_text: str) -> Dict[str, str]:
-    """Generates tailored LeetCode-style starter code for all 7 programming languages."""
+    """Generates authentic LeetCode-style starter code with rich input parameter descriptions across 7 languages."""
     fn_name, params, ret_type, needs_tree, needs_list = parse_question_signature(question_text)
 
     param_names = [p[0] for p in params]
@@ -421,7 +602,32 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
         "#         self.next = next\n\n"
     ) if needs_list else ""
 
-    py_code = f"{py_tree_def}{py_list_def}def {fn_name}({param_str_py}):\n    # Optimal Bounds Target: State Time Complexity: O(?), Space Complexity: O(?)\n    # Write your solution below\n    pass\n"
+    # Build comprehensive docstring with input parameter descriptions
+    py_doc_lines = ['    """']
+    for p_name, p_type in params:
+        py_doc_lines.append(f"    :type {p_name}: {p_type}")
+    if ret_type != "Any":
+        py_doc_lines.append(f"    :rtype: {ret_type}")
+    py_doc_lines.append("")
+    py_doc_lines.append("    Input Description:")
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        py_doc_lines.append(f"    - {p_name} ({p_type}): {desc}")
+    py_doc_lines.append(f"    - Returns ({ret_type}): {get_return_description(fn_name, ret_type)}")
+    py_doc_lines.append("")
+    py_doc_lines.append("    Complexity Target:")
+    py_doc_lines.append("    - State Time Complexity: O(?)")
+    py_doc_lines.append("    - State Space Complexity: O(?)")
+    py_doc_lines.append('    """')
+    py_doc = "\n".join(py_doc_lines)
+
+    py_code = (
+        f"{py_tree_def}{py_list_def}"
+        f"def {fn_name}({param_str_py}):\n"
+        f"{py_doc}\n"
+        f"    # Write your solution below\n"
+        f"    pass\n"
+    )
 
     # 2. JavaScript (ES6)
     js_tree_def = (
@@ -435,14 +641,46 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
         " */\n"
     ) if needs_tree else ""
 
-    js_code = f"{js_tree_def}function {fn_name}({param_str_js}) {{\n    // State Time Complexity: O(?), Space Complexity: O(?)\n    // Write your solution below\n}}\n"
+    js_doc_lines = ["/**"]
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        js_type = "number[]" if "list" in p_type.lower() else ("string" if p_type == "str" else ("number" if p_type == "int" else p_type))
+        js_doc_lines.append(f" * @param {{{js_type}}} {p_name} - {desc}")
+    js_doc_lines.append(f" * @return {{{ret_type}}} - {get_return_description(fn_name, ret_type)}")
+    js_doc_lines.append(" *")
+    js_doc_lines.append(" * Complexity Target:")
+    js_doc_lines.append(" * - Time: O(?) | Space: O(?)")
+    js_doc_lines.append(" */")
+    js_doc = "\n".join(js_doc_lines)
+
+    js_code = (
+        f"{js_tree_def}{js_doc}\n"
+        f"function {fn_name}({param_str_js}) {{\n"
+        f"    // Write your solution below\n"
+        f"}}\n"
+    )
 
     # 3. TypeScript
     ts_params = ", ".join(
         f"{name}: {('TreeNode | null' if needs_tree and name in ('root', 'p', 'q') else ('ListNode | null' if needs_list and name == 'head' else ('number[]' if 'num' in name or 'arr' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('number[][]' if name in ('intervals', 'matrix', 'costs') else 'number')))))}"
         for name, _ in params
     )
-    ts_code = f"function {fn_name}({ts_params}): any {{\n    // State Time Complexity: O(?), Space Complexity: O(?)\n    // Write your solution below\n    return null;\n}}\n"
+    ts_doc_lines = ["/**", " * Input Description:"]
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        ts_doc_lines.append(f" * - {p_name}: {desc}")
+    ts_doc_lines.append(f" * - Returns: {get_return_description(fn_name, ret_type)}")
+    ts_doc_lines.append(" * Time: O(?) | Space: O(?)")
+    ts_doc_lines.append(" */")
+    ts_doc = "\n".join(ts_doc_lines)
+
+    ts_code = (
+        f"{ts_doc}\n"
+        f"function {fn_name}({ts_params}): any {{\n"
+        f"    // Write your solution below\n"
+        f"    return null;\n"
+        f"}}\n"
+    )
 
     # 4. C++ (C++20)
     cpp_params = ", ".join(
@@ -450,15 +688,23 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
         for name, _ in params
     )
     cpp_ret = "TreeNode*" if needs_tree and fn_name == "lowestCommonAncestor" else "int"
+    cpp_doc_lines = ["/**", " * Input Description:"]
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        cpp_doc_lines.append(f" * - {p_name}: {desc}")
+    cpp_doc_lines.append(" * Time Complexity: O(?), Space Complexity: O(?)")
+    cpp_doc_lines.append(" */")
+    cpp_doc = "\n".join(cpp_doc_lines)
+
     cpp_code = (
         "#include <vector>\n"
         "#include <string>\n"
         "#include <unordered_map>\n"
         "using namespace std;\n\n"
+        f"{cpp_doc}\n"
         "class Solution {\n"
         "public:\n"
         f"    {cpp_ret} {fn_name}({cpp_params}) {{\n"
-        "        // Time Complexity: O(?), Space Complexity: O(?)\n"
         "        // Write your solution below\n"
         "        return {};\n"
         "    }\n"
@@ -471,11 +717,19 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
         for name, _ in params
     )
     java_ret = "TreeNode" if needs_tree and fn_name == "lowestCommonAncestor" else "int[]"
+    java_doc_lines = ["/**", " * Input Description:"]
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        java_doc_lines.append(f" * - {p_name}: {desc}")
+    java_doc_lines.append(" * Time Complexity: O(?), Space Complexity: O(?)")
+    java_doc_lines.append(" */")
+    java_doc = "\n".join(java_doc_lines)
+
     java_code = (
         "import java.util.*;\n\n"
+        f"{java_doc}\n"
         "class Solution {\n"
         f"    public {java_ret} {fn_name}({java_params}) {{\n"
-        "        // Time Complexity: O(?), Space Complexity: O(?)\n"
         "        // Write your solution below\n"
         "        return null;\n"
         "    }\n"
@@ -487,8 +741,15 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
         f"{name} {('*TreeNode' if needs_tree and name in ('root', 'p', 'q') else ('*ListNode' if needs_list and name == 'head' else ('[]int' if 'num' in name or 'arr' in name or name in ('prices', 'height', 'coins') else ('string' if name in ('s', 't') else ('[][]int' if name in ('intervals', 'matrix', 'costs') else 'int')))))}"
         for name, _ in params
     )
+    go_doc_lines = ["// Input Description:"]
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        go_doc_lines.append(f"// - {p_name}: {desc}")
+    go_doc = "\n".join(go_doc_lines)
+
     go_code = (
         "package main\n\n"
+        f"{go_doc}\n"
         f"func {fn_name}({go_params}) interface{{}} {{\n"
         "    // Write your solution below\n"
         "    return nil\n"
@@ -497,7 +758,14 @@ def generate_starter_snippets(question_text: str) -> Dict[str, str]:
 
     # 7. Rust (1.76)
     rust_params = ", ".join(f"{name}: i32" for name in param_names)
+    rust_doc_lines = ["/// Input Description:"]
+    for p_name, p_type in params:
+        desc = get_param_description(p_name, p_type, fn_name)
+        rust_doc_lines.append(f"/// - {p_name}: {desc}")
+    rust_doc = "\n".join(rust_doc_lines)
+
     rust_code = (
+        f"{rust_doc}\n"
         f"pub fn {fn_name}({rust_params}) -> i32 {{\n"
         "    // Write your solution below\n"
         "    0\n"

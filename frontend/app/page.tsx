@@ -213,7 +213,7 @@ export default function Home() {
   const [codeSnippet, setCodeSnippet] = useState(STARTER_CODE["python"]);
   const [isAnalyzingCode, setIsAnalyzingCode] = useState(false);
   const [codeAnalysisResult, setCodeAnalysisResult] = useState<CodeAnalysisResult | null>(null);
-  const [activeCodeTab, setActiveCodeTab] = useState<"editor" | "output" | "loopholes">("editor");
+  const [activeCodeTab, setActiveCodeTab] = useState<"problem" | "editor" | "output" | "loopholes">("editor");
 
   // Dynamic Problem, Placeholder & LeetCode UI State
   const [starterSnippets, setStarterSnippets] = useState<Record<string, string> | null>(null);
@@ -1018,6 +1018,10 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
     const cleanText = chip.startsWith("+ ") ? chip.slice(2) : chip;
     setCandidateInput((prev) => (prev ? `${prev} ${cleanText}` : cleanText));
   };
+
+  const lastInterviewerIdx = conversation.map((m, i) => m.role === "interviewer" ? i : -1).filter((i) => i !== -1).pop() ?? -1;
+  const currentQuestionText = lastInterviewerIdx !== -1 ? conversation[lastInterviewerIdx].content : "";
+  const currentHint = lastInterviewerIdx !== -1 ? hintsMap[lastInterviewerIdx] : null;
 
   return (
     <div className={`bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30 selection:text-indigo-200 relative ${
@@ -2231,9 +2235,95 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                     ? "w-full md:w-8/12"
                     : "w-full md:w-5/12"
                 } ${mobileActiveTab === "chat" ? "hidden md:flex" : "flex"}`}>
-                  {/* Editor Header: Tabs & LeetCode Language Selector */}
-                  <div className="shrink-0 px-3 py-2 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between flex-wrap gap-2">
+                  {/* LeetCode Problem Header: Title, Difficulty Badge, Topic Tag, and 💡 Problem Hint */}
+                  <div className="shrink-0 px-3.5 py-2.5 border-b border-slate-800 bg-slate-950 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-bold text-indigo-400">#{questionCount}.</span>
+                        <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight" title={currentProblemTitle || "Algorithmic Problem"}>
+                          {currentProblemTitle || "Algorithmic Challenge"}
+                        </h3>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        difficulty === "Easy"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : difficulty === "Hard"
+                          ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                          : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                      }`}>
+                        {difficulty}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-800/90 border border-slate-700/70 text-[10px] text-slate-300 font-mono">
+                        {topic || "DSA"}
+                      </span>
+                    </div>
+
+                    {/* Dedicated Problem-Solving Hint Button */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (lastInterviewerIdx !== -1) {
+                            handleFetchHint(lastInterviewerIdx, currentQuestionText);
+                          }
+                        }}
+                        disabled={hintLoadingIdx !== null}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                        title="Get an on-demand algorithmic hint without spoiling the solution"
+                      >
+                        {hintLoadingIdx !== null ? (
+                          <span className="animate-spin text-xs">⟳</span>
+                        ) : (
+                          <span>💡</span>
+                        )}
+                        <span>{currentHint ? `Hint (L${currentHint.hint_level}/3)` : "Problem Hint"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Active Problem Hint Banner (Expandable directly in Problem Solving) */}
+                  {currentHint && (
+                    <div className="shrink-0 px-3.5 py-2 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border-b border-amber-500/30 text-xs text-amber-200 flex items-start justify-between gap-3 animate-in fade-in">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 font-bold text-amber-300">
+                          <span>💡 Hint {currentHint.hint_level} / 3:</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {currentHint.category}
+                          </span>
+                        </div>
+                        <p className="leading-relaxed text-amber-100/90 text-[11px] sm:text-xs">{currentHint.hint}</p>
+                      </div>
+                      {currentHint.hint_level < 3 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (lastInterviewerIdx !== -1) {
+                              handleFetchHint(lastInterviewerIdx, currentQuestionText);
+                            }
+                          }}
+                          disabled={hintLoadingIdx !== null}
+                          className="shrink-0 text-[10px] sm:text-[11px] font-semibold text-amber-400 hover:text-amber-200 underline cursor-pointer whitespace-nowrap"
+                        >
+                          Next Hint ({currentHint.hint_level + 1}/3) ➔
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Editor Sub-Header: Tabs & LeetCode Language Selector */}
+                  <div className="shrink-0 px-3 py-1.5 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setActiveCodeTab("problem")}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          activeCodeTab === "problem"
+                            ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        Problem 📋
+                      </button>
                       <button
                         type="button"
                         onClick={() => setActiveCodeTab("editor")}
@@ -2268,18 +2358,11 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                             : "text-slate-400 hover:text-slate-200"
                         }`}
                       >
-                        <span>Loophole Analysis</span>
+                        <span>Loophole Analysis 🔍</span>
                         {codeAnalysisResult && (
                           <span className={`w-2 h-2 rounded-full ${codeAnalysisResult.status === "Passed" ? "bg-emerald-400" : "bg-amber-400"}`} />
                         )}
                       </button>
-
-                      {currentProblemTitle && (
-                        <span className="hidden xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/15 border border-indigo-500/30 text-[10px] text-indigo-300 font-mono truncate max-w-[200px]" title={currentProblemTitle}>
-                          <span>⚡</span>
-                          <span>{currentProblemTitle}</span>
-                        </span>
-                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -2353,10 +2436,10 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                         onClick={handleRunCode}
                         disabled={isRunningCode}
                         className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
-                        title="Compile and run your solution safely in the backend sandbox"
+                        title="Compile and run your solution safely in the sandbox (Ctrl+Enter)"
                       >
                         {isRunningCode ? <span className="animate-spin text-xs">⟳</span> : <span>▶</span>}
-                        <span>Run Code</span>
+                        <span>Run</span>
                       </button>
 
                       {/* Analyze & Find Loopholes Button */}
@@ -2373,11 +2456,53 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                     </div>
                   </div>
 
+                  {/* Tab 0: Problem Statement Description Tab */}
+                  {activeCodeTab === "problem" && (
+                    <div className="flex-1 min-h-0 h-full flex flex-col p-4 space-y-3 overflow-y-auto font-sans">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div className="space-y-1">
+                          <h2 className="text-base font-bold text-white flex items-center gap-2">
+                            <span className="text-indigo-400 font-mono">#{questionCount}.</span>
+                            <span>{currentProblemTitle || "Algorithmic Challenge"}</span>
+                          </h2>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              difficulty === "Easy"
+                                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                : difficulty === "Hard"
+                                ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                                : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                            }`}>
+                              {difficulty}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800/90 text-[10px] text-slate-300 font-mono border border-slate-700/80">
+                              {topic || "DSA"}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveCodeTab("editor")}
+                          className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        >
+                          <span>Open Code Editor 💻</span>
+                        </button>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text">
+                        {currentQuestionText || "Awaiting problem description..."}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tab 1: Full-Height Code Editor Workspace */}
                   {activeCodeTab === "editor" && (
                     <div className="flex-1 min-h-0 h-full flex flex-col p-3 space-y-2 overflow-hidden">
                       <div className="shrink-0 flex items-center justify-between text-[11px] text-slate-400">
-                        <span>Write clean code. Tab indents 4 spaces. Various languages supported.</span>
+                        <span className="flex items-center gap-2">
+                          <span>Tab indents 4 spaces.</span>
+                          <span className="text-emerald-400 font-mono font-semibold">Ctrl+Enter to Run ▶</span>
+                        </span>
                         {selectedCompany && (
                           <span className="text-indigo-400 font-mono font-semibold">Bar: {selectedCompany}</span>
                         )}
@@ -2389,6 +2514,11 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                           value={codeSnippet}
                           onChange={(e) => setCodeSnippet(e.target.value)}
                           onKeyDown={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                              e.preventDefault();
+                              handleRunCode();
+                              return;
+                            }
                             if (e.key === "Tab") {
                               e.preventDefault();
                               const target = e.currentTarget;
@@ -2443,7 +2573,7 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                             disabled={isRunningCode}
                             className="px-2.5 py-1 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer flex items-center gap-1"
                           >
-                            <span>▶ Run & See Output</span>
+                            <span>▶ Run Code</span>
                           </button>
                           <button
                             type="button"
