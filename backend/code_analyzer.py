@@ -102,11 +102,11 @@ def analyze_code_loopholes(
         time_comp = "O(N^2)"
         if not is_quadratic_expected:
             loopholes.append("Loophole (Asymptotic Bottleneck): Nested loops detected resulting in $O(N^2)$ quadratic time complexity. Will likely TLE (Time Limit Exceeded) on $N \\ge 10^5$.")
-    elif any(term in code_lower for term in ["left < right", "left <= right", "mid =", "binary_search", ">> 1"]):
+    elif any(term in code_lower for term in ["mid =", "mid=", "mid :=", "binary_search", ">> 1"]):
         time_comp = "O(\\log N)"
     elif any(term in code_lower for term in ["sort()", "sorted("]):
         time_comp = "O(N \\log N)"
-    elif for_count >= 1:
+    elif for_count >= 1 or "while " in code_lower:
         time_comp = "O(N)"
     else:
         time_comp = "O(1)"
