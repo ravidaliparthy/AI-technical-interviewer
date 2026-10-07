@@ -98,7 +98,7 @@ def execute_candidate_code(
 
 
 def _run_python_code(code: str, problem_title: str, custom_input: Optional[str], start_time: float) -> Dict[str, Any]:
-    prob_clean = problem_title.lower() if problem_title else ""
+    prob_clean = re.sub(r'[\r\n"\'\\]+', ' ', problem_title).lower() if problem_title else ""
     
     harness = f"""
 import sys, io, json
@@ -148,6 +148,23 @@ def __run_harness():
             {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": "nums=[2,7,11,15], target=9", "is_indices": True}},
             {{"args": ([3, 2, 4], 6), "expected": [1, 2], "desc": "nums=[3,2,4], target=6", "is_indices": True}}
         ]
+    elif "palindrome" in fname_lower or "palindrome" in p_lower:
+        if "longest" in p_lower and ("subsequence" in p_lower or "build" in p_lower or "length" in p_lower):
+            tests = [
+                {{"args": ("abccccdd",), "expected": 7, "desc": "s='abccccdd'"}}
+            ]
+        else:
+            tests = [
+                {{"args": ("A man, a plan, a canal: Panama",), "expected": True, "desc": "s='A man, a plan, a canal: Panama'"}},
+                {{"args": ("racecar",), "expected": True, "desc": "s='racecar'"}},
+                {{"args": ("hello",), "expected": False, "desc": "s='hello'"}}
+            ]
+    elif "parenthes" in fname_lower or "parenthes" in p_lower or "bracket" in p_lower or "isvalid" in fname_lower:
+        tests = [
+            {{"args": ("()[]{{}}",), "expected": True, "desc": "s='()[]{{}}'"}},
+            {{"args": ("(]",), "expected": False, "desc": "s='(]'"}},
+            {{"args": ("([)]",), "expected": False, "desc": "s='([)]'"}}
+        ]
     elif "longest" in fname_lower or "longest substring" in p_lower:
         tests = [
             {{"args": ("abcabcbb",), "expected": 3, "desc": "s='abcabcbb'"}},
@@ -167,6 +184,15 @@ def __run_harness():
             {{"args": ([-1, 0, 3, 5, 9, 12], 9), "expected": 4, "desc": "nums=[-1,0,3,5,9,12], target=9"}},
             {{"args": ([-1, 0, 3, 5, 9, 12], 2), "expected": -1, "desc": "nums=[-1,0,3,5,9,12], target=2"}}
         ]
+    elif "stock" in p_lower or "maxprofit" in fname_lower:
+        tests = [
+            {{"args": ([7, 1, 5, 3, 6, 4],), "expected": 5, "desc": "prices=[7,1,5,3,6,4]"}},
+            {{"args": ([7, 6, 4, 3, 1],), "expected": 0, "desc": "prices=[7,6,4,3,1]"}}
+        ]
+    elif "reverse" in fname_lower or "reverse" in p_lower:
+        tests = [
+            {{"args": ("hello",), "expected": "olleh", "desc": "s='hello'"}}
+        ]
     else:
         # Default probe with parameters
         arg_count = getattr(fn, '__code__', None).co_argcount if hasattr(fn, '__code__') else 1
@@ -178,7 +204,9 @@ def __run_harness():
             ]
         elif 's' in varnames:
             tests = [
-                {{"args": ("abccccdd",), "expected": 7, "desc": "s='abccccdd'"}}
+                {{"args": ("A man, a plan, a canal: Panama",), "expected": True, "desc": "s='A man, a plan, a canal: Panama'"}},
+                {{"args": ("racecar",), "expected": True, "desc": "s='racecar'"}},
+                {{"args": ("hello",), "expected": False, "desc": "s='hello'"}}
             ]
         else:
             tests = [
@@ -210,12 +238,12 @@ def __run_harness():
                     passed = (actual == expected)
                 
                 if not passed:
-                    note = f"Test Case #{{idx}} Failed: Expected {{expected}}, but function returned {{repr(actual)}}."
+                    note = "Test Case #" + str(idx) + " Failed: Expected " + str(expected) + ", but function returned " + repr(actual) + "."
                     fail_notes.append(note)
             else:
                 passed = (actual is not None)
                 if not passed:
-                    note = f"Test Case #{{idx}} Failed: Function returned None."
+                    note = "Test Case #" + str(idx) + " Failed: Function returned None."
                     fail_notes.append(note)
 
             if not passed:
@@ -230,11 +258,11 @@ def __run_harness():
             }})
         except Exception as ex:
             all_passed = False
-            fail_notes.append(f"Test Case #{{idx}} Runtime Error: {{ex}}")
+            fail_notes.append("Test Case #" + str(idx) + " Runtime Error: " + str(ex))
             results.append({{
                 "test_case": idx,
-                "input": t.get("desc", f"Test Case {{idx}}"),
-                "output": f"Exception: {{ex}}",
+                "input": t.get("desc", "Test Case " + str(idx)),
+                "output": "Exception: " + str(ex),
                 "expected": str(t.get("expected", "Valid Return")),
                 "passed": False
             }})
@@ -373,6 +401,17 @@ function __run_js_harness() {{
             {{ args: [[2, 7, 11, 15], 9], expected: [0, 1], desc: "nums=[2,7,11,15], target=9" }},
             {{ args: [[3, 2, 4], 6], expected: [1, 2], desc: "nums=[3,2,4], target=6" }}
         ];
+    }} else if (fname.includes("palindrome") || p.includes("palindrome")) {{
+        tests = [
+            {{ args: ["A man, a plan, a canal: Panama"], expected: true, desc: "s='A man, a plan, a canal: Panama'" }},
+            {{ args: ["racecar"], expected: true, desc: "s='racecar'" }},
+            {{ args: ["hello"], expected: false, desc: "s='hello'" }}
+        ];
+    }} else if (fname.includes("parenthes") || p.includes("parenthes") || fname.includes("isvalid")) {{
+        tests = [
+            {{ args: ["()[]{{}}"], expected: true, desc: "s='()[]{{}}'" }},
+            {{ args: ["(]"], expected: false, desc: "s='(]'" }}
+        ];
     }} else if (fname.includes("anagram") || p.includes("anagram")) {{
         tests = [
             {{ args: ["anagram", "nagaram"], expected: true, desc: "s='anagram', t='nagaram'" }},
@@ -380,7 +419,9 @@ function __run_js_harness() {{
         ];
     }} else {{
         tests = [
-            {{ args: [[2, 7, 11, 15], 9], expected: [0, 1], desc: "nums=[2,7,11,15], target=9" }}
+            {{ args: ["A man, a plan, a canal: Panama"], expected: true, desc: "s='A man, a plan, a canal: Panama'" }},
+            {{ args: ["racecar"], expected: true, desc: "s='racecar'" }},
+            {{ args: ["hello"], expected: false, desc: "s='hello'" }}
         ];
     }}
 

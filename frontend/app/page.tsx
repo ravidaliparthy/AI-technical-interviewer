@@ -2396,6 +2396,26 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                               setTimeout(() => {
                                 target.selectionStart = target.selectionEnd = start + 4;
                               }, 0);
+                            } else if (e.key === "Enter") {
+                              e.preventDefault();
+                              const target = e.currentTarget;
+                              const start = target.selectionStart;
+                              const end = target.selectionEnd;
+                              const textBefore = codeSnippet.substring(0, start);
+                              const lines = textBefore.split("\n");
+                              const currentLine = lines[lines.length - 1];
+                              const match = currentLine.match(/^(\s*)/);
+                              let indent = match ? match[1] : "";
+                              const trimmed = currentLine.trim();
+                              if (trimmed.endsWith(":") || trimmed.endsWith("{") || trimmed.endsWith("[")) {
+                                indent += "    ";
+                              }
+                              const insertion = "\n" + indent;
+                              const next = codeSnippet.substring(0, start) + insertion + codeSnippet.substring(end);
+                              setCodeSnippet(next);
+                              setTimeout(() => {
+                                target.selectionStart = target.selectionEnd = start + insertion.length;
+                              }, 0);
                             }
                           }}
                           spellCheck={false}

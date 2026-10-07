@@ -16,11 +16,53 @@ CANONICAL_SIGNATURES: Dict[str, Dict[str, Any]] = {
         "needs_tree": True,
         "test_call": "lowestCommonAncestor(root, p, q)"
     },
+    "valid palindrome": {
+        "fn": "isPalindrome",
+        "params": [("s", "str")],
+        "return_type": "bool",
+        "test_call": "isPalindrome('A man, a plan, a canal: Panama')"
+    },
+    "palindrome": {
+        "fn": "isPalindrome",
+        "params": [("s", "str")],
+        "return_type": "bool",
+        "test_call": "isPalindrome('racecar')"
+    },
     "two sum": {
         "fn": "twoSum",
         "params": [("nums", "List[int]"), ("target", "int")],
         "return_type": "List[int]",
         "test_call": "twoSum([2, 7, 11, 15], 9)"
+    },
+    "maximum subarray": {
+        "fn": "maxSubArray",
+        "params": [("nums", "List[int]")],
+        "return_type": "int",
+        "test_call": "maxSubArray([-2,1,-3,4,-1,2,1,-5,4])"
+    },
+    "climbing stairs": {
+        "fn": "climbStairs",
+        "params": [("n", "int")],
+        "return_type": "int",
+        "test_call": "climbStairs(3)"
+    },
+    "container with most water": {
+        "fn": "maxArea",
+        "params": [("height", "List[int]")],
+        "return_type": "int",
+        "test_call": "maxArea([1,8,6,2,5,4,8,3,7])"
+    },
+    "merge intervals": {
+        "fn": "merge",
+        "params": [("intervals", "List[List[int]]")],
+        "return_type": "List[List[int]]",
+        "test_call": "merge([[1,3],[2,6],[8,10],[15,18]])"
+    },
+    "group anagrams": {
+        "fn": "groupAnagrams",
+        "params": [("strs", "List[str]")],
+        "return_type": "List[List[str]]",
+        "test_call": "groupAnagrams(['eat','tea','tan','ate','nat','bat'])"
     },
     "trapping rain water": {
         "fn": "trap",
@@ -403,20 +445,21 @@ def is_coding_problem(question_text: str, topic: str = "") -> bool:
     q_lower = question_text.lower()
 
     # Explicitly check for problem declaration syntax
-    if "### problem:" in q_lower or "test cases:" in q_lower or "test case 1" in q_lower:
+    if any(k in q_lower for k in ["### problem:", "test cases", "test case 1", "constraints", "expected time complexity", "palindrome"]):
         return True
 
     # If the topic is explicitly Python, ML, or System Design, check if it explicitly asks for a DSA problem
     if any(t in norm_topic for t in ["system design", "machine learning", "ml", "database", "sql"]):
         return False
 
-    if "python" in norm_topic and not any(k in q_lower for k in ["leetcode", "array", "binary tree", "linked list", "target", "matrix"]):
+    if "python" in norm_topic and not any(k in q_lower for k in ["leetcode", "array", "binary tree", "linked list", "target", "matrix", "palindrome"]):
         return False
 
     # Check for DSA algorithmic keywords
     dsa_markers = [
         "given an array", "given a binary tree", "given a string `s`", "given two strings",
         "return the indices", "in-place", "time complexity", "big-o", "auxiliary space",
-        "test cases", "lowest common ancestor", "dynamic programming"
+        "test cases", "lowest common ancestor", "dynamic programming", "palindrome",
+        "provide your solution", "solution (code)", "input:", "output:"
     ]
     return any(m in q_lower for m in dsa_markers)
