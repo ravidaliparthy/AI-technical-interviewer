@@ -284,6 +284,12 @@ CANONICAL_SIGNATURES: Dict[str, Dict[str, Any]] = {
         "return_type": "int",
         "needs_tree": True,
         "test_call": "diameterOfBinaryTree(root)"
+    },
+    "remove duplicates from sorted array": {
+        "fn": "removeDuplicates",
+        "params": [("nums", "List[int]")],
+        "return_type": "int",
+        "test_call": "removeDuplicates([1, 1, 2])"
     }
 }
 
@@ -325,13 +331,17 @@ def extract_problem_title(question_text: str, topic: str = "") -> str:
             clean = re.sub(r'[`\*_]', '', clean).strip()
             # Remove trailing colon or extra punctuation
             clean = clean.rstrip(':.- ')
-            if clean and len(clean) >= 3 and not any(w in clean.lower() for w in ["sure", "hello", "welcome", "let's"]):
-                return clean
+            if clean and len(clean) >= 3:
+                lower_c = clean.lower()
+                if lower_c in ("problem", "problem description", "task", "question", "title", "test cases", "constraints"):
+                    continue
+                if not any(w in lower_c for w in ["sure", "hello", "welcome", "let's", "here is"]):
+                    return clean
 
     # 2. Check canonical catalogue match
     q_lower = question_text.lower()
     for key in CANONICAL_SIGNATURES.keys():
-        if key in q_lower:
+        if re.search(rf'\b{re.escape(key)}\b', q_lower):
             return " ".join(word.capitalize() for word in key.split())
 
     # 3. Check for function signature: def fn_name(...)
@@ -350,8 +360,13 @@ def extract_problem_title(question_text: str, topic: str = "") -> str:
         if line.startswith("#") or line.startswith("**"):
             clean = re.sub(r'^[#\*\s\d\.\:\-]+', '', line)
             clean = re.sub(r'[\*`_]', '', clean).strip()
-            if 3 < len(clean) < 55 and not any(w in clean.lower() for w in ["sure", "hello", "welcome", "let's", "here is"]):
-                return clean
+            clean = clean.rstrip(':.- ')
+            if 3 < len(clean) < 55:
+                lower_c = clean.lower()
+                if lower_c in ("problem", "problem description", "task", "question", "title", "test cases", "constraints"):
+                    continue
+                if not any(w in lower_c for w in ["sure", "hello", "welcome", "let's", "here is"]):
+                    return clean
 
     return "Algorithmic Challenge"
 

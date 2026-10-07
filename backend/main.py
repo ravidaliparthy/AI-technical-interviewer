@@ -1626,6 +1626,14 @@ SPECIAL DSA CODING REQUIREMENTS:
         Output: ...)
    - Constraints
    DO NOT skip the Test Cases section.
+   
+   CRITICAL MATHEMATICAL & TYPE ACCURACY:
+   - Verify every test case calculation before outputting. Never state an incorrect mathematical conclusion (e.g. if target is 20 and array contains 9 and 11, 9 + 11 = 20, so pair exists and output is true).
+   - Ensure expected output type strictly matches the problem specification:
+     * If asking whether a condition is met or a pair exists (e.g. "Find Pair", "Valid Palindrome", "Can Jump"), Output MUST be a boolean (`true` or `false`).
+     * If asking for indices (e.g. "Two Sum"), Output MUST be a list (e.g. `[0, 1]`).
+     * If asking for numerical optimum or count, Output MUST be an integer or float.
+     * If asking for collections, Output MUST be a list.
 3. Explicitly state the function signature if helpful: e.g. `fn_name(param1, param2)`.
 4. ALWAYS evaluate whether the candidate declared both Time Complexity ($O(...)$) and Auxiliary Space Complexity ($O(...)$).
 5. If they omitted complexity analysis or provided an unoptimized solution, probe for it directly without revealing the answer.

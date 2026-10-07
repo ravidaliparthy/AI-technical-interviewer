@@ -502,10 +502,27 @@ def __run_harness():
                 {{"args": ([], 1), "expected": 1, "desc": "arr=[], n=1"}}
             ]
         elif 'nums' in varnames_lower:
-            tests = [
-                {{"args": ([-2, 1, -3, 4, -1, 2, 1, -5, 4],), "expected": 6, "desc": "nums=[-2,1,-3,4,-1,2,1,-5,4]"}},
-                {{"args": ([1, 2, 3, 4],), "expected": [24, 12, 8, 6], "desc": "nums=[1,2,3,4]"}}
-            ]
+            if "duplicate" in p_lower or "duplicate" in fname_lower:
+                tests = [
+                    {{"args": ([1, 3, 4, 2, 2],), "expected": 2, "desc": "nums=[1, 3, 4, 2, 2]"}},
+                    {{"args": ([3, 1, 3, 4, 2],), "expected": 3, "desc": "nums=[3, 1, 3, 4, 2]"}}
+                ]
+            elif "product" in p_lower or "except self" in p_lower:
+                tests = [
+                    {{"args": ([1, 2, 3, 4],), "expected": [24, 12, 8, 6], "desc": "nums=[1, 2, 3, 4]"}},
+                    {{"args": ([-1, 1, 0, -3, 3],), "expected": [0, 0, 9, 0, 0], "desc": "nums=[-1, 1, 0, -3, 3]"}}
+                ]
+            elif "missing" in p_lower:
+                tests = [
+                    {{"args": ([3, 0, 1],), "expected": 2, "desc": "nums=[3, 0, 1]"}},
+                    {{"args": ([0, 1],), "expected": 2, "desc": "nums=[0, 1]"}}
+                ]
+            else:
+                tests = [
+                    {{"args": ([-2, 1, -3, 4, -1, 2, 1, -5, 4],), "expected": 6, "desc": "nums=[-2,1,-3,4,-1,2,1,-5,4]"}},
+                    {{"args": ([1],), "expected": 1, "desc": "nums=[1]"}},
+                    {{"args": ([5, 4, -1, 7, 8],), "expected": 23, "desc": "nums=[5,4,-1,7,8]"}}
+                ]
         elif arg_count == 2:
             p1 = varnames[0] if len(varnames) > 0 else "param1"
             p2 = varnames[1] if len(varnames) > 1 else "param2"

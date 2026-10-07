@@ -761,6 +761,50 @@ CANONICAL_DSA_CATALOG: Dict[str, Dict[str, Any]] = {
             {"args": ([2, 3, 1, 1, 4],), "expected": True, "desc": "nums = [2, 3, 1, 1, 4]"},
             {"args": ([3, 2, 1, 0, 4],), "expected": False, "desc": "nums = [3, 2, 1, 0, 4]"}
         ]
+    },
+
+    # 51. Find the Duplicate Number
+    "find the duplicate number": {
+        "title": "Find the Duplicate Number",
+        "fn": "findDuplicate",
+        "aliases": ["find the duplicate number", "findduplicate", "duplicate number", "find duplicate", "find_duplicate"],
+        "params": [("nums", "List[int]")],
+        "return_type": "int",
+        "test_call": "findDuplicate([1, 3, 4, 2, 2])",
+        "tests": [
+            {"args": ([1, 3, 4, 2, 2],), "expected": 2, "desc": "nums = [1, 3, 4, 2, 2]"},
+            {"args": ([3, 1, 3, 4, 2],), "expected": 3, "desc": "nums = [3, 1, 3, 4, 2]"},
+            {"args": ([3, 3, 3, 3, 3],), "expected": 3, "desc": "nums = [3, 3, 3, 3, 3]"}
+        ]
+    },
+
+    # 52. Meeting Rooms II / Maximum Non-Overlapping Meetings
+    "maximum non-overlapping meetings": {
+        "title": "Maximum Non-Overlapping Meetings",
+        "fn": "maxMeetings",
+        "aliases": ["maximum non-overlapping meetings", "maxmeetings", "meeting rooms ii", "meeting rooms 2", "non-overlapping meetings"],
+        "params": [("meetings", "List[List[int]]")],
+        "return_type": "int",
+        "test_call": "maxMeetings([[1, 3], [2, 4], [3, 5], [0, 6], [5, 7], [8, 9], [5, 9]])",
+        "tests": [
+            {"args": ([[1, 3], [2, 4], [3, 5], [0, 6], [5, 7], [8, 9], [5, 9]],), "expected": 4, "desc": "meetings = [[1, 3], [2, 4], [3, 5], [0, 6], [5, 7], [8, 9], [5, 9]]"},
+            {"args": ([[10, 20], [12, 15], [20, 30], [25, 35]],), "expected": 2, "desc": "meetings = [[10, 20], [12, 15], [20, 30], [25, 35]]"},
+            {"args": ([[1, 5], [5, 10], [10, 15]],), "expected": 3, "desc": "meetings = [[1, 5], [5, 10], [10, 15]]"}
+        ]
+    },
+
+    # 53. Remove Duplicates from Sorted Array
+    "remove duplicates from sorted array": {
+        "title": "Remove Duplicates from Sorted Array",
+        "fn": "removeDuplicates",
+        "aliases": ["remove duplicates from sorted array", "removeduplicates", "remove duplicates"],
+        "params": [("nums", "List[int]")],
+        "return_type": "int",
+        "test_call": "removeDuplicates([1, 1, 2])",
+        "tests": [
+            {"args": ([1, 1, 2],), "expected": 2, "desc": "nums = [1, 1, 2]"},
+            {"args": ([0, 0, 1, 1, 1, 2, 2, 3, 3, 4],), "expected": 5, "desc": "nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]"}
+        ]
     }
 }
 
