@@ -966,6 +966,12 @@ def build_interview_response_metadata(question_text: str, topic: str = "") -> Di
 
             prob_title = extract_problem_title(question_text, topic)
             extracted_tests = extract_test_cases_from_text(question_text)
+            if not extracted_tests and prob_title:
+                try:
+                    from canonical_dsa import get_canonical_tests
+                    extracted_tests = get_canonical_tests(prob_title)
+                except Exception:
+                    pass
             placeholder = "State your approach, Big-O Time & Space complexity, and write your solution in the editor..."
             quick_chips = ["+ O(N) / O(1)", "+ O(N log N) / O(N)", "+ O(log N) / O(1)", "+ O(V + E) / O(V)", "+ Two Pointers", "+ Hash Map"]
         else:

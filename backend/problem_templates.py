@@ -275,28 +275,14 @@ CANONICAL_SIGNATURES: Dict[str, Dict[str, Any]] = {
     }
 }
 
+try:
+    from canonical_dsa import find_canonical_problem, CANONICAL_DSA_CATALOG, get_canonical_signature
+except ImportError:
+    find_canonical_problem = None
+    CANONICAL_DSA_CATALOG = {}
+    get_canonical_signature = None
 
-def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, str]], str, bool, bool]:
-    """
-    Parses a question and returns:
-    (fn_name, [(param_name, param_type), ...], return_type, needs_tree, needs_list)
-    """
-    q_lower = question_text.lower()
 
-    # 1. Check canonical catalog first
-    for key, data in CANONICAL_SIGNATURES.items():
-        if key in q_lower:
-            return (
-                data["fn"],
-                data["params"],
-                data.get("return_type", "Any"),
-                data.get("needs_tree", False),
-                data.get("needs_list", False)
-            )
-
-    # 2. Check for explicit function signature declared in text:
-    # e.g. "Write a function 'findMissing(arr, n)'" or `findMissing(arr, n)`
-    sig_match = re.search(r'(?:function|def|write a function)\s*[`\'"]?([a-zA-Z_]\w*)\s*\(([^)]*)\)[`\'"]?', question_text, re.IGNORECASE)
 def extract_problem_title(question_text: str, topic: str = "") -> str:
     """
     Extracts a clean, prominent problem title from any question format:
@@ -417,6 +403,10 @@ def get_param_description(param_name: str, param_type: str, fn_name: str = "") -
         return "Total number of courses labeled from 0 to numCourses - 1"
     elif p in ("prerequisites",):
         return "List of prerequisite course pairs [course, prereq]"
+    elif p in ("operations", "updates", "queries"):
+        return "Array of update operations/queries [start, end, val]"
+    elif p in ("worddict",):
+        return "List of dictionary words"
     elif p in ("chars",):
         return "Array of characters to compress or evaluate"
     elif p in ("logs",):
@@ -460,6 +450,17 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
     q_lower = question_text.lower()
 
     # 1. Check canonical catalog first
+    if find_canonical_problem:
+        c_prob = find_canonical_problem(question_text)
+        if c_prob:
+            return (
+                c_prob["fn"],
+                c_prob["params"],
+                c_prob.get("return_type", "Any"),
+                c_prob.get("needs_tree", False),
+                c_prob.get("needs_list", False)
+            )
+
     for key, data in CANONICAL_SIGNATURES.items():
         if key in q_lower:
             return (
@@ -492,16 +493,18 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
                         t = "TreeNode"
                     elif arg_name == "head" or ("list" in arg_name and "linked" in q_lower):
                         t = "ListNode"
-                    elif arg_name in ("nums", "arr", "prices", "height", "heights", "coins"):
+                    elif arg_name in ("nums", "arr", "prices", "height", "heights", "coins", "temperatures"):
                         t = "List[int]"
-                    elif arg_name in ("intervals", "matrix", "costs"):
+                    elif arg_name in ("intervals", "matrix", "costs", "operations", "updates", "queries"):
                         t = "List[List[int]]"
                     elif arg_name in ("grid",):
                         t = "List[List[str]]"
-                    elif arg_name in ("s", "t", "word", "str", "chars"):
+                    elif arg_name in ("s", "t", "word", "str", "chars", "word1", "word2"):
                         t = "str"
                     elif arg_name in ("target", "n", "k", "amount", "val", "size"):
                         t = "int"
+                    elif arg_name in ("wordDict", "cpdomains"):
+                        t = "List[str]"
                     else:
                         t = "Any"
                     parsed_params.append((arg_name, t))
@@ -530,6 +533,10 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
         ("p", "TreeNode" if needs_tree else "int"),
         ("q", "TreeNode" if needs_tree else "int"),
         ("head", "ListNode" if needs_list else "Any"),
+        ("n", "int"),
+        ("operations", "List[List[int]]"),
+        ("updates", "List[List[int]]"),
+        ("queries", "List[List[int]]"),
         ("arr", "List[int]"),
         ("nums", "List[int]"),
         ("target", "int"),
@@ -546,10 +553,10 @@ def parse_question_signature(question_text: str) -> Tuple[str, List[Tuple[str, s
         ("costs", "List[List[int]]"),
         ("prerequisites", "List[List[int]]"),
         ("numCourses", "int"),
+        ("wordDict", "List[str]"),
         ("s", "str"),
         ("t", "str"),
         ("k", "int"),
-        ("n", "int"),
     ]
 
     for var_name, var_type in candidates:

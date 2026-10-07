@@ -526,11 +526,10 @@ export default function Home() {
       handleFetchRealtimeHelper(data.message, "");
 
       // Auto-adapt Code Editor visibility: Hide for non-DSA / conceptual, show for coding problems
-      if (data.is_coding_problem !== undefined) {
-        setShowCodeEditor(Boolean(data.is_coding_problem));
-      }
+      const isCoding = Boolean(data.is_coding_problem) || (Boolean(data.message) && (data.message.includes("### Problem:") || data.message.includes("Input:")));
+      setShowCodeEditor(isCoding);
 
-      if (data.is_coding_problem) {
+      if (isCoding) {
         if (data.test_cases && data.test_cases.length > 0) {
           setActiveTestCases(data.test_cases);
         }
@@ -585,12 +584,12 @@ export default function Home() {
 
     setIsRunningCode(true);
     let effectiveProblem = activeProblemText;
-    if (!effectiveProblem) {
+    if (!effectiveProblem || (!effectiveProblem.includes("Input:") && !effectiveProblem.includes("Test Cases"))) {
       const probMsg = conversation
         .slice()
         .reverse()
         .find((m) => m.role === "interviewer" && (m.content.includes("Input:") || m.content.includes("Problem:")));
-      effectiveProblem = probMsg ? probMsg.content : (currentProblemTitle || topic);
+      effectiveProblem = probMsg ? probMsg.content : (effectiveProblem || currentProblemTitle || topic);
     }
 
     try {
@@ -856,10 +855,11 @@ export default function Home() {
       handleFetchRealtimeHelper(data.message, "");
 
       // Dynamically adapt editor visibility and question parameters
-      if (data.is_coding_problem !== undefined) {
-        setShowCodeEditor(Boolean(data.is_coding_problem));
+      const isCodingFollowup = Boolean(data.is_coding_problem) || (Boolean(data.message) && (data.message.includes("### Problem:") || data.message.includes("Input:")));
+      if (data.is_coding_problem !== undefined || isCodingFollowup) {
+        setShowCodeEditor(isCodingFollowup);
       }
-      if (data.is_coding_problem) {
+      if (isCodingFollowup) {
         if (data.test_cases && data.test_cases.length > 0) {
           setActiveTestCases(data.test_cases);
         }
@@ -2755,7 +2755,7 @@ ${report.topics_to_revise.map((t) => `• ${t}`).join("\n")}`;
                                     )}
 
                                     <div className="text-[11px] font-mono flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
-                                      {tr.expected && (
+                                      {tr.expected && tr.expected !== "None" && tr.expected !== "null" && (
                                         <span className="text-slate-300">
                                           <span className="text-slate-400 font-sans">Expected: </span>
                                           <span className="text-emerald-300 font-bold">{tr.expected}</span>

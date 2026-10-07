@@ -14,6 +14,13 @@ import re
 import ast
 from typing import Dict, List, Any, Optional
 
+try:
+    from canonical_dsa import find_canonical_problem, get_canonical_tests, CANONICAL_DSA_CATALOG
+except ImportError:
+    find_canonical_problem = None
+    get_canonical_tests = lambda q, fn="": []
+    CANONICAL_DSA_CATALOG = {}
+
 def parse_input_arguments(input_str: str):
     clean = input_str.strip().replace('`', '')
     clean = re.sub(r'[\'"]?([a-zA-Z_]\w*)[\'"]?\s*=', r'\1=', clean)
@@ -120,6 +127,11 @@ def extract_test_cases_from_text(text: str) -> List[Dict[str, Any]]:
                             "expected": expected,
                             "desc": in_raw.replace('`', '').strip()
                         })
+
+    if not tests and get_canonical_tests:
+        canonical = get_canonical_tests(text)
+        if canonical:
+            return canonical
 
     return tests
 
@@ -235,6 +247,8 @@ def _run_python_code(
             })
     else:
         extracted_tests = extract_test_cases_from_text(problem_title)
+        if not extracted_tests and problem_title and get_canonical_tests:
+            extracted_tests = get_canonical_tests(problem_title)
 
     if custom_input and custom_input.strip():
         try:
@@ -265,7 +279,7 @@ def __run_harness():
 
     # Check top-level functions
     if not fn:
-        for name in ['twoSum', 'canFinish', 'solve', 'combine', 'subsets', 'permute', 'findMissing', 'missingNumber', 'lengthOfLongestSubstring', 'isValid', 'maxProfit', 'mergeTwoLists', 'reverseList', 'reverselist', 'search', 'isAnagram', 'numIslands', 'trap', 'maxArea', 'coinChange', 'climbStairs', 'maxSubArray', 'productExceptSelf', 'merge', 'wordBreak', 'rob', 'threeSum']:
+        for name in ['range_increment_queries', 'rangeIncrementQueries', 'getModifiedArray', 'twoSum', 'canFinish', 'solve', 'combine', 'subsets', 'permute', 'findMissing', 'missingNumber', 'lengthOfLongestSubstring', 'isValid', 'maxProfit', 'mergeTwoLists', 'reverseList', 'reverselist', 'search', 'isAnagram', 'numIslands', 'trap', 'maxArea', 'coinChange', 'climbStairs', 'maxSubArray', 'productExceptSelf', 'merge', 'wordBreak', 'rob', 'threeSum', 'dailyTemperatures', 'findKthLargest']:
             if name in globs and callable(globs[name]):
                 fn = globs[name]
                 break
@@ -291,6 +305,12 @@ def __run_harness():
 
     if dynamic_suite:
         tests = dynamic_suite
+    elif "range" in fname_lower or "increment" in fname_lower or "getmodifiedarray" in fname_lower or "range increment" in p_lower or "range addition" in p_lower:
+        tests = [
+            {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": "n=5, operations=[[1,3,2],[2,4,3]]"}},
+            {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": "n=3, operations=[[0,2,1]]"}},
+            {{"args": (4, [[0, 1, 3], [1, 3, 2]]), "expected": [3, 5, 2, 2], "desc": "n=4, operations=[[0,1,3],[1,3,2]]"}}
+        ]
     elif "canfinish" in fname_lower or "course schedule" in p_lower or "courseschedule" in fname_lower:
         tests = [
             {{"args": (2, [[1, 0]]), "expected": True, "desc": "numCourses=2, prerequisites=[[1,0]]"}},
@@ -456,6 +476,11 @@ def __run_harness():
                 {{"args": ("racecar",), "expected": True, "desc": "s='racecar'"}},
                 {{"args": ("hello",), "expected": False, "desc": "s='hello'"}}
             ]
+        elif ('n' in varnames_lower or 'length' in varnames_lower) and any(v in varnames_lower for v in ['operations', 'updates', 'queries']):
+            tests = [
+                {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": "n=5, operations=[[1,3,2],[2,4,3]]"}},
+                {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": "n=3, operations=[[0,2,1]]"}}
+            ]
         elif ('arr' in varnames_lower and 'n' in varnames_lower) or 'arr' in varnames_lower:
             tests = [
                 {{"args": ([3, 7, 1, 2, 8, 4, 5, 6], 9), "expected": 9, "desc": "arr=[3, 7, 1, 2, 8, 4, 5, 6], n=9"}},
@@ -464,26 +489,42 @@ def __run_harness():
             ]
         elif 'nums' in varnames_lower:
             tests = [
-                {{"args": ([1, 2, 3, 4],), "expected": None, "desc": "nums=[1,2,3,4]"}},
-                {{"args": ([5, 1, 9, 3],), "expected": None, "desc": "nums=[5,1,9,3]"}}
+                {{"args": ([-2, 1, -3, 4, -1, 2, 1, -5, 4],), "expected": 6, "desc": "nums=[-2,1,-3,4,-1,2,1,-5,4]"}},
+                {{"args": ([1, 2, 3, 4],), "expected": [24, 12, 8, 6], "desc": "nums=[1,2,3,4]"}}
             ]
         elif arg_count == 2:
             p1 = varnames[0] if len(varnames) > 0 else "param1"
             p2 = varnames[1] if len(varnames) > 1 else "param2"
-            tests = [
-                {{"args": ([1, 2, 3], 2), "expected": None, "desc": f"{{p1}}=[1,2,3], {{p2}}=2"}}
-            ]
+            p1_is_int = p1 in ['n', 'k', 'target', 'amount', 'val', 'size', 'len', 'length']
+            p2_is_int = p2 in ['n', 'k', 'target', 'amount', 'val', 'size', 'len', 'length']
+            if p1_is_int and not p2_is_int:
+                tests = [
+                    {{"args": (5, [[1, 3, 2], [2, 4, 3]]), "expected": [0, 2, 5, 5, 3], "desc": f"{{p1}}=5, {{p2}}=[[1,3,2],[2,4,3]]"}},
+                    {{"args": (3, [[0, 2, 1]]), "expected": [1, 1, 1], "desc": f"{{p1}}=3, {{p2}}=[[0,2,1]]"}}
+                ]
+            elif not p1_is_int and p2_is_int:
+                tests = [
+                    {{"args": ([2, 7, 11, 15], 9), "expected": [0, 1], "desc": f"{{p1}}=[2,7,11,15], {{p2}}=9", "is_indices": True}}
+                ]
+            elif p1_is_int and p2_is_int:
+                tests = [
+                    {{"args": (4, 2), "expected": [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "desc": f"{{p1}}=4, {{p2}}=2", "is_nested_set": True}}
+                ]
+            else:
+                tests = [
+                    {{"args": ("anagram", "nagaram"), "expected": True, "desc": f"{{p1}}='anagram', {{p2}}='nagaram'"}}
+                ]
         elif arg_count >= 3:
             tests = [
-                {{"args": tuple([1] * arg_count), "expected": None, "desc": f"Multi-argument test ({{arg_count}} args)"}}
+                {{"args": tuple([1] * arg_count), "expected": 1, "desc": f"Multi-argument test ({{arg_count}} args)"}}
             ]
         elif 'n' in varnames or 'k' in varnames:
             tests = [
-                {{"args": (5,), "expected": None, "desc": "n=5"}}
+                {{"args": (5,), "expected": 5, "desc": "n=5"}}
             ]
         else:
             tests = [
-                {{"args": ([1, 2, 3],), "expected": None, "desc": "Sample input"}}
+                {{"args": ([1, 2, 3, 4],), "expected": [1, 2, 3, 4], "desc": "nums=[1,2,3,4]"}}
             ]
 
     results = []
@@ -530,7 +571,7 @@ def __run_harness():
                 "test_case": idx,
                 "input": desc,
                 "output": str(actual),
-                "expected": str(expected) if expected is not None else "Computed Value",
+                "expected": str(expected) if expected is not None else "Valid Return",
                 "passed": passed
             }})
         except Exception as ex:
@@ -540,7 +581,7 @@ def __run_harness():
                 "test_case": idx,
                 "input": t.get("desc", "Test Case " + str(idx)),
                 "output": "Exception: " + str(ex),
-                "expected": str(t.get("expected", "Valid Return")),
+                "expected": str(t["expected"]) if t.get("expected") is not None else "Valid Return",
                 "passed": False
             }})
 
@@ -672,6 +713,8 @@ def _run_javascript_code(
             })
     else:
         dynamic_tests = extract_test_cases_from_text(problem_title)
+        if not dynamic_tests and problem_title and get_canonical_tests:
+            dynamic_tests = get_canonical_tests(problem_title)
 
     if custom_input and custom_input.strip():
         try:
@@ -686,7 +729,10 @@ def _run_javascript_code(
 
 function __run_js_harness() {{
     let fn = null;
-    if (typeof twoSum === 'function') fn = twoSum;
+    if (typeof range_increment_queries === 'function') fn = range_increment_queries;
+    else if (typeof rangeIncrementQueries === 'function') fn = rangeIncrementQueries;
+    else if (typeof getModifiedArray === 'function') fn = getModifiedArray;
+    else if (typeof twoSum === 'function') fn = twoSum;
     else if (typeof canFinish === 'function') fn = canFinish;
     else if (typeof solve === 'function') fn = solve;
     else if (typeof combine === 'function') fn = combine;
@@ -722,6 +768,12 @@ function __run_js_harness() {{
 
     if (dynamicSuite && dynamicSuite.length > 0) {{
         tests = dynamicSuite;
+    }} else if (fname.includes("range") || fname.includes("increment") || fname.includes("getmodifiedarray") || p.includes("range increment") || p.includes("range addition")) {{
+        tests = [
+            {{ args: [5, [[1, 3, 2], [2, 4, 3]]], expected: [0, 2, 5, 5, 3], desc: "n=5, operations=[[1,3,2],[2,4,3]]" }},
+            {{ args: [3, [[0, 2, 1]]], expected: [1, 1, 1], desc: "n=3, operations=[[0,2,1]]" }},
+            {{ args: [4, [[0, 1, 3], [1, 3, 2]]], expected: [3, 5, 2, 2], desc: "n=4, operations=[[0,1,3],[1,3,2]]" }}
+        ];
     }} else if (fname.includes("canfinish") || p.includes("course schedule")) {{
         tests = [
             {{ args: [2, [[1, 0]]], expected: true, desc: "numCourses=2, prerequisites=[[1,0]]" }},
