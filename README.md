@@ -20,6 +20,8 @@
 
 ## 📖 Overview
 
+Link : https://ai-technical-interviewer-ashy.vercel.app/
+
 The **AI Technical Interview Coach** simulates authentic technical interview loops conducted by Senior Staff Engineers and Bar Raisers at top tech firms. Unlike generic mock interview tools that output static textbook questions, this platform:
 
 1. **Reasons in Real-Time via Groq Cloud LLMs**: Evaluates the candidate's exact technical responses, probes architectural trade-offs, and dynamically crafts spontaneous follow-ups.
